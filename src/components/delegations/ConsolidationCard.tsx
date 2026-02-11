@@ -277,29 +277,21 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
         </div>
 
         <div>
-          <label className="block text-xs text-gray-400 mb-1">Consolidation Type</label>
-          <div className="flex gap-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="consolidation-type"
-                checked={useCase === 998}
-                onChange={() => setUseCase(998)}
-                className="accent-accent"
-              />
-              <span className="text-sm">Same Person (998)</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="consolidation-type"
-                checked={useCase === 999}
-                onChange={() => setUseCase(999)}
-                className="accent-accent"
-              />
-              <span className="text-sm">Bi-directional (999)</span>
-            </label>
+          <div className="flex items-center gap-2 text-sm text-gray-300">
+            <span>Type: Same Person (998)</span>
+            <button
+              type="button"
+              onClick={() => setUseCase(useCase === 999 ? 998 : 999)}
+              className="text-[10px] text-gray-500 hover:text-gray-300 transition-colors underline"
+            >
+              {useCase === 999 ? 'use Same Person (998)' : 'use Bi-directional (999) instead'}
+            </button>
           </div>
+          {useCase === 999 && (
+            <div className="text-[10px] text-yellow-400 mt-1">
+              Bi-directional (999) is for consolidating wallets that may not belong to the same person. Most users want Same Person (998).
+            </div>
+          )}
         </div>
 
         <div className="text-[10px] text-gray-500">
