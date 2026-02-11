@@ -4,6 +4,19 @@ import { getCollectionName } from '../lib/constants.ts'
 
 const SEIZE_API = 'https://api.6529.io'
 
+/** Map contract address → API collection filter name */
+const CONTRACT_TO_COLLECTION: Record<string, string> = {
+  [CONTRACTS.THE_MEMES.toLowerCase()]: 'MEMES',
+  [CONTRACTS.GRADIENT.toLowerCase()]: 'GRADIENTS',
+}
+
+/** Map API collection name → contract address */
+const COLLECTION_TO_CONTRACT: Record<string, string> = {
+  MEMES: CONTRACTS.THE_MEMES,
+  GRADIENTS: CONTRACTS.GRADIENT,
+  NEXTGEN: CONTRACTS.NEXTGEN,
+}
+
 export async function fetchProfile(address: string): Promise<SeizeProfileResponse | null> {
   try {
     const res = await fetch(`${SEIZE_API}/api/profiles/${address}`)
@@ -19,27 +32,46 @@ export async function fetchOwnedNfts(
   contract?: string,
 ): Promise<OwnedNFT[]> {
   try {
-    let url = `${SEIZE_API}/api/owners/${address}/nfts`
-    if (contract) url += `?contract=${contract}`
+    const allItems: OwnedNFT[] = []
+    const pageSize = 200
+    let page = 1
 
-    const res = await fetch(url)
-    if (!res.ok) return []
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      let url = `${SEIZE_API}/api/profiles/${address}/collected?seized=SEIZED&account_for_consolidations=false&page_size=${pageSize}&page=${page}`
 
-    const data = await res.json()
-    const items = data.data || data || []
+      if (contract) {
+        const collectionName = CONTRACT_TO_COLLECTION[contract.toLowerCase()]
+        if (collectionName) url += `&collection=${collectionName}`
+      }
 
-    return items
-      .filter((item: Record<string, unknown>) => item.id !== undefined)
-      .map((item: Record<string, unknown>) => ({
-        tokenId: (item.token_id ?? item.id) as number,
-        contract: item.contract as string,
-        name: (item.name || `#${item.token_id ?? item.id}`) as string,
-        image: (item.image || item.thumbnail || '') as string,
-        thumbnail: item.thumbnail as string | undefined,
-        artist: item.artist as string | undefined,
-        balance: (item.balance ?? 1) as number,
-        collection: getCollectionName(item.contract as string),
-      }))
+      const res = await fetch(url)
+      if (!res.ok) return allItems
+
+      const data = await res.json()
+      const items: Record<string, unknown>[] = data.data || []
+
+      for (const item of items) {
+        const contractAddr = COLLECTION_TO_CONTRACT[item.collection as string]
+        if (!contractAddr) continue // skip unsupported collections (e.g. MEMELAB)
+
+        allItems.push({
+          tokenId: item.token_id as number,
+          contract: contractAddr,
+          name: (item.token_name as string) || `#${item.token_id}`,
+          image: (item.img as string) || '',
+          thumbnail: item.img as string | undefined,
+          artist: undefined,
+          balance: (item.seized_count as number) ?? 1,
+          collection: getCollectionName(contractAddr),
+        })
+      }
+
+      if (!data.next || items.length < pageSize) break
+      page++
+    }
+
+    return allItems
   } catch (e) {
     console.error('Error fetching owned NFTs:', e)
     return []
