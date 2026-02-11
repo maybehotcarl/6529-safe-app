@@ -46,6 +46,7 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
   const [walletAddress, setWalletAddress] = useState('')
   const [useCase, setUseCase] = useState(998)
   const [validationError, setValidationError] = useState<string | null>(null)
+  const [showPairs, setShowPairs] = useState(false)
 
   // Confirmation state for accept/revoke
   const [confirmAction, setConfirmAction] = useState<{
@@ -147,7 +148,14 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
 
       {!loading && pairs.length > 0 && (
         <div className="space-y-2">
-          {pairs.map((pair) => (
+          <button
+            onClick={() => setShowPairs(!showPairs)}
+            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors"
+          >
+            <span className={`transition-transform ${showPairs ? 'rotate-90' : ''}`}>&#9654;</span>
+            Active Consolidations ({pairs.length})
+          </button>
+          {showPairs && pairs.map((pair) => (
             <div
               key={`${pair.address}-${pair.useCase}`}
               className="p-3 bg-gray-800 rounded border border-gray-700 space-y-2"

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useDelegations } from '../../hooks/useDelegations.ts'
 import { USE_CASES, getCollectionName } from '../../lib/constants.ts'
 import { ALL_COLLECTIONS_ADDRESS } from '../../contracts/addresses.ts'
@@ -20,6 +21,7 @@ function formatExpiry(timestamp: number): string {
 export default function DelegationsTab() {
   const { delegations, loading, error, refresh } = useDelegations()
   const { loading: revoking, proposeTx } = useProposeTx()
+  const [showDelegations, setShowDelegations] = useState(false)
 
   const handleRevoke = async (delegation: { collection: string; to_address: string; use_case: number }) => {
     const tx = encodeRevokeDelegation(
@@ -38,9 +40,13 @@ export default function DelegationsTab() {
 
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-gray-300">
-            Active Delegations
-          </h3>
+          <button
+            onClick={() => setShowDelegations(!showDelegations)}
+            className="flex items-center gap-1.5 text-sm font-bold uppercase tracking-wider text-gray-300 hover:text-white transition-colors"
+          >
+            <span className={`text-xs transition-transform ${showDelegations ? 'rotate-90' : ''}`}>&#9654;</span>
+            Active Delegations{!loading && ` (${delegations.length})`}
+          </button>
           <button
             onClick={refresh}
             className="text-xs text-gray-400 hover:text-white transition-colors"
@@ -49,21 +55,21 @@ export default function DelegationsTab() {
           </button>
         </div>
 
-        {loading && (
+        {showDelegations && loading && (
           <div className="text-sm text-gray-400 py-8 text-center">Loading delegations...</div>
         )}
 
-        {error && (
+        {showDelegations && error && (
           <div className="text-sm text-danger py-4">{error}</div>
         )}
 
-        {!loading && !error && delegations.length === 0 && (
+        {showDelegations && !loading && !error && delegations.length === 0 && (
           <div className="text-sm text-gray-400 py-8 text-center border border-gray-700 rounded-lg">
             No active delegations found
           </div>
         )}
 
-        {!loading && delegations.length > 0 && (
+        {showDelegations && !loading && delegations.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
