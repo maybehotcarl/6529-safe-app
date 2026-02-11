@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+  --color-gray-950: #0a0a0a;
+  --color-gray-900: #111111;
+  --color-gray-800: #1a1a1a;
+  --color-gray-700: #2a2a2a;
+  --color-gray-600: #3a3a3a;
+  --color-gray-400: #888888;
+  --color-gray-300: #aaaaaa;
+  --color-accent: #6366f1;
+  --color-accent-hover: #818cf8;
+  --color-danger: #ef4444;
+  --color-success: #22c55e;
+}
+
+body {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  -webkit-font-smoothing: antialiased;
+}
+
+input, select, textarea {
+  color-scheme: dark;
+}
