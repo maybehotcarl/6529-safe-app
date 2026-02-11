@@ -2,7 +2,7 @@ import type { SeizeProfileResponse, OwnedNFT, Delegation } from './types.ts'
 import { CONTRACTS } from '../contracts/addresses.ts'
 import { getCollectionName } from '../lib/constants.ts'
 
-const SEIZE_API = 'https://api.seize.io'
+const SEIZE_API = 'https://api.6529.io'
 
 export async function fetchProfile(address: string): Promise<SeizeProfileResponse | null> {
   try {

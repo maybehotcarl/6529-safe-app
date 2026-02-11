@@ -1,23 +1,30 @@
 import { useState } from 'react'
+import { useSafeAppsSDK } from '@safe-global/safe-apps-react-sdk'
 import { USE_CASES, COLLECTION_OPTIONS } from '../../lib/constants.ts'
 import { encodeRegisterDelegation } from '../../contracts/encoders.ts'
 import { useProposeTx } from '../../hooks/useProposeTx.ts'
+import { validateAddress } from '../../lib/validation.ts'
 
 interface Props {
   onSuccess: () => void
 }
 
 export default function RegisterForm({ onSuccess }: Props) {
+  const { safe } = useSafeAppsSDK()
   const [delegateAddress, setDelegateAddress] = useState('')
   const [useCase, setUseCase] = useState(1)
   const [collection, setCollection] = useState(COLLECTION_OPTIONS[0].address)
   const [expiryDate, setExpiryDate] = useState('')
+  const [validationError, setValidationError] = useState<string | null>(null)
   const { loading, error, safeTxHash, proposeTx, reset } = useProposeTx()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!delegateAddress.match(/^0x[0-9a-fA-F]{40}$/)) {
-      alert('Invalid Ethereum address')
+    setValidationError(null)
+
+    const result = validateAddress(delegateAddress, safe.safeAddress)
+    if (!result.valid) {
+      setValidationError(result.error)
       return
     }
 
@@ -27,7 +34,7 @@ export default function RegisterForm({ onSuccess }: Props) {
 
     const tx = encodeRegisterDelegation(
       collection,
-      delegateAddress,
+      result.address,
       expiry,
       useCase,
       true,
@@ -38,6 +45,7 @@ export default function RegisterForm({ onSuccess }: Props) {
     if (hash) {
       setDelegateAddress('')
       setExpiryDate('')
+      setValidationError(null)
       onSuccess()
     }
   }
@@ -51,10 +59,16 @@ export default function RegisterForm({ onSuccess }: Props) {
         <input
           type="text"
           value={delegateAddress}
-          onChange={e => setDelegateAddress(e.target.value)}
+          onChange={e => {
+            setDelegateAddress(e.target.value)
+            setValidationError(null)
+          }}
           placeholder="0x..."
           className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:border-accent"
         />
+        {validationError && (
+          <div className="text-xs text-danger mt-1">{validationError}</div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -99,9 +113,10 @@ export default function RegisterForm({ onSuccess }: Props) {
 
       {error && <div className="text-xs text-danger">{error}</div>}
       {safeTxHash && (
-        <div className="text-xs text-success">
-          Tx proposed! Hash: {safeTxHash.slice(0, 10)}...
-          <button type="button" onClick={reset} className="ml-2 underline">OK</button>
+        <div className="text-xs text-yellow-400 bg-yellow-400/10 border border-yellow-400/30 rounded p-2">
+          Tx proposed (hash: {safeTxHash.slice(0, 10)}...). It still needs Safe signer approval
+          before it takes effect on-chain.
+          <button type="button" onClick={reset} className="ml-2 underline">Dismiss</button>
         </div>
       )}
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSafeAppsSDK } from '@safe-global/safe-apps-react-sdk'
 import Header from './components/Header.tsx'
 import DelegationsTab from './components/delegations/DelegationsTab.tsx'
 import NftsTab from './components/nfts/NftsTab.tsx'
@@ -14,10 +15,17 @@ const TABS: { id: Tab; label: string }[] = [
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('delegations')
+  const { safe } = useSafeAppsSDK()
+  const wrongNetwork = safe.chainId !== 1
 
   return (
     <div className="min-h-screen bg-black text-white">
       <Header />
+      {wrongNetwork && (
+        <div className="bg-red-900/60 border-b border-red-700 px-4 py-2 text-center text-sm text-red-200">
+          Warning: This app is designed for Ethereum Mainnet (chain 1). Your Safe is on chain {safe.chainId}. Transactions may fail or target wrong contracts.
+        </div>
+      )}
       <nav className="flex border-b border-gray-700">
         {TABS.map(tab => (
           <button

@@ -5,8 +5,11 @@ import { useProposeTx } from '../../hooks/useProposeTx.ts'
 import { encodeERC721Transfer, encodeERC1155Transfer } from '../../contracts/encoders.ts'
 import { isERC1155 } from '../../lib/constants.ts'
 import { CONTRACTS } from '../../contracts/addresses.ts'
+import { validateAddress } from '../../lib/validation.ts'
 import NftCard from '../nfts/NftCard.tsx'
 import type { OwnedNFT } from '../../api/types.ts'
+
+const MAX_BATCH_SIZE = 20
 
 const FILTERS = [
   { label: 'All', contract: undefined },
@@ -29,6 +32,7 @@ export default function TransferTab() {
   const [selected, setSelected] = useState<Map<string, SelectedNft>>(new Map())
   const [recipient, setRecipient] = useState('')
   const [showConfirm, setShowConfirm] = useState(false)
+  const [validationError, setValidationError] = useState<string | null>(null)
 
   const nftKey = (nft: OwnedNFT) => `${nft.contract}-${nft.tokenId}`
 
@@ -38,6 +42,10 @@ export default function TransferTab() {
     if (next.has(key)) {
       next.delete(key)
     } else {
+      if (next.size >= MAX_BATCH_SIZE) {
+        alert(`Maximum ${MAX_BATCH_SIZE} NFTs per transfer batch to avoid gas issues.`)
+        return
+      }
       next.set(key, { nft, quantity: nft.balance })
     }
     setSelected(next)
@@ -52,9 +60,21 @@ export default function TransferTab() {
     }
   }
 
+  const handleReviewTransfer = () => {
+    setValidationError(null)
+    const result = validateAddress(recipient, safe.safeAddress)
+    if (!result.valid) {
+      setValidationError(result.error)
+      return
+    }
+    setShowConfirm(true)
+  }
+
   const handleTransfer = async () => {
-    if (!recipient.match(/^0x[0-9a-fA-F]{40}$/)) {
-      alert('Invalid recipient address')
+    const result = validateAddress(recipient, safe.safeAddress)
+    if (!result.valid) {
+      setValidationError(result.error)
+      setShowConfirm(false)
       return
     }
 
@@ -63,7 +83,7 @@ export default function TransferTab() {
         return encodeERC1155Transfer(
           nft.contract,
           safe.safeAddress,
-          recipient,
+          result.address,
           BigInt(nft.tokenId),
           BigInt(quantity),
         )
@@ -71,7 +91,7 @@ export default function TransferTab() {
       return encodeERC721Transfer(
         nft.contract,
         safe.safeAddress,
-        recipient,
+        result.address,
         BigInt(nft.tokenId),
       )
     })
@@ -81,6 +101,7 @@ export default function TransferTab() {
       setSelected(new Map())
       setRecipient('')
       setShowConfirm(false)
+      setValidationError(null)
     }
   }
 
@@ -92,10 +113,17 @@ export default function TransferTab() {
         <input
           type="text"
           value={recipient}
-          onChange={e => setRecipient(e.target.value)}
+          onChange={e => {
+            setRecipient(e.target.value)
+            setValidationError(null)
+            setShowConfirm(false)
+          }}
           placeholder="0x..."
           className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:border-accent"
         />
+        {validationError && (
+          <div className="text-xs text-danger">{validationError}</div>
+        )}
       </div>
 
       {/* Collection Filter */}
@@ -140,7 +168,7 @@ export default function TransferTab() {
       {selected.size > 0 && (
         <div className="p-4 bg-gray-900 rounded-lg border border-gray-700 space-y-3">
           <h3 className="text-sm font-bold text-gray-300">
-            Selected ({selected.size})
+            Selected ({selected.size}/{MAX_BATCH_SIZE})
           </h3>
           <div className="space-y-2">
             {Array.from(selected.entries()).map(([key, { nft, quantity }]) => (
@@ -178,15 +206,16 @@ export default function TransferTab() {
 
           {error && <div className="text-xs text-danger">{error}</div>}
           {safeTxHash && (
-            <div className="text-xs text-success">
-              Tx proposed! Hash: {safeTxHash.slice(0, 10)}...
-              <button type="button" onClick={reset} className="ml-2 underline">OK</button>
+            <div className="text-xs text-yellow-400 bg-yellow-400/10 border border-yellow-400/30 rounded p-2">
+              Tx proposed (hash: {safeTxHash.slice(0, 10)}...). It still needs Safe signer approval
+              before the transfer executes on-chain.
+              <button type="button" onClick={reset} className="ml-2 underline">Dismiss</button>
             </div>
           )}
 
           {!showConfirm ? (
             <button
-              onClick={() => setShowConfirm(true)}
+              onClick={handleReviewTransfer}
               disabled={!recipient || selected.size === 0}
               className="w-full bg-accent hover:bg-accent-hover disabled:opacity-50 text-white rounded px-4 py-2 text-sm font-medium transition-colors"
             >
@@ -195,8 +224,13 @@ export default function TransferTab() {
           ) : (
             <div className="space-y-3 p-3 bg-gray-800 rounded border border-yellow-400/30">
               <div className="text-xs text-yellow-400">
-                Confirm: Transfer {selected.size} NFT{selected.size > 1 ? 's' : ''} to{' '}
-                <span className="font-mono">{recipient.slice(0, 8)}...{recipient.slice(-4)}</span>
+                Confirm: Transfer {selected.size} NFT{selected.size > 1 ? 's' : ''} to:
+              </div>
+              <div className="font-mono text-xs break-all text-white bg-gray-900 rounded p-2">
+                {recipient}
+              </div>
+              <div className="text-[10px] text-gray-400">
+                Verify the full address above. This action is irreversible.
               </div>
               <div className="flex gap-2">
                 <button

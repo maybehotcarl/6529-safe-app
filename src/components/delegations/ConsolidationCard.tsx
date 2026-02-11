@@ -1,13 +1,13 @@
 import { useState } from 'react'
+import { useSafeAppsSDK } from '@safe-global/safe-apps-react-sdk'
 import { useConsolidationStatus } from '../../hooks/useConsolidationStatus.ts'
 import type { ConsolidationPair } from '../../hooks/useConsolidationStatus.ts'
 import { ALL_COLLECTIONS_ADDRESS } from '../../contracts/addresses.ts'
 import { encodeRegisterDelegation, encodeRevokeDelegation } from '../../contracts/encoders.ts'
 import { useProposeTx } from '../../hooks/useProposeTx.ts'
+import { validateAddress } from '../../lib/validation.ts'
 
-function shortenAddress(addr: string): string {
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`
-}
+const ONE_YEAR_SECS = BigInt(365 * 24 * 60 * 60)
 
 function PairStatus({ pair }: { pair: ConsolidationPair }) {
   if (pair.outgoing && pair.incoming) {
@@ -29,7 +29,7 @@ function PairStatus({ pair }: { pair: ConsolidationPair }) {
   return (
     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-400">
       <span className="w-2 h-2 rounded-full bg-blue-400" />
-      Incoming — you need to accept
+      Incoming — verify address before accepting
     </span>
   )
 }
@@ -39,23 +39,36 @@ interface Props {
 }
 
 export default function ConsolidationCard({ onDelegationChange }: Props) {
+  const { safe } = useSafeAppsSDK()
   const { pairs, loading, error, refresh } = useConsolidationStatus()
   const { loading: proposing, error: txError, safeTxHash, proposeTx, reset } = useProposeTx()
 
   const [walletAddress, setWalletAddress] = useState('')
   const [useCase, setUseCase] = useState(998)
+  const [validationError, setValidationError] = useState<string | null>(null)
+
+  // Confirmation state for accept/revoke
+  const [confirmAction, setConfirmAction] = useState<{
+    type: 'accept' | 'revoke'
+    pair: ConsolidationPair
+  } | null>(null)
 
   const handleConsolidate = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!walletAddress.match(/^0x[0-9a-fA-F]{40}$/)) {
-      alert('Invalid Ethereum address')
+    setValidationError(null)
+
+    const result = validateAddress(walletAddress, safe.safeAddress)
+    if (!result.valid) {
+      setValidationError(result.error)
       return
     }
 
+    const expiry = BigInt(Math.floor(Date.now() / 1000)) + ONE_YEAR_SECS
+
     const tx = encodeRegisterDelegation(
       ALL_COLLECTIONS_ADDRESS,
-      walletAddress,
-      0n,
+      result.address,
+      expiry,
       useCase,
       true,
       0n,
@@ -64,29 +77,33 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
     const hash = await proposeTx([tx])
     if (hash) {
       setWalletAddress('')
+      setValidationError(null)
       refresh()
       onDelegationChange()
     }
   }
 
-  const handleAccept = async (pair: ConsolidationPair) => {
+  const handleAcceptConfirmed = async (pair: ConsolidationPair) => {
+    const expiry = BigInt(Math.floor(Date.now() / 1000)) + ONE_YEAR_SECS
+
     const tx = encodeRegisterDelegation(
       ALL_COLLECTIONS_ADDRESS,
       pair.address,
-      0n,
+      expiry,
       pair.useCase,
       true,
       0n,
     )
 
     const hash = await proposeTx([tx])
+    setConfirmAction(null)
     if (hash) {
       refresh()
       onDelegationChange()
     }
   }
 
-  const handleRevoke = async (pair: ConsolidationPair) => {
+  const handleRevokeConfirmed = async (pair: ConsolidationPair) => {
     const tx = encodeRevokeDelegation(
       ALL_COLLECTIONS_ADDRESS,
       pair.address,
@@ -94,6 +111,7 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
     )
 
     const hash = await proposeTx([tx])
+    setConfirmAction(null)
     if (hash) {
       refresh()
       onDelegationChange()
@@ -115,8 +133,9 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
       </div>
 
       <p className="text-xs text-gray-400">
-        Link your Safe to a hot wallet so seize.io sees them as one identity.
+        Link your Safe to a hot wallet so 6529 sees them as one identity.
         Both wallets must register to each other for consolidation to take effect.
+        Consolidations expire after 1 year and can be renewed.
       </p>
 
       {/* Existing consolidation pairs */}
@@ -131,35 +150,100 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
           {pairs.map((pair) => (
             <div
               key={`${pair.address}-${pair.useCase}`}
-              className="flex items-center justify-between gap-3 p-3 bg-gray-800 rounded border border-gray-700"
+              className="p-3 bg-gray-800 rounded border border-gray-700 space-y-2"
             >
-              <div className="flex-1 min-w-0">
-                <div className="font-mono text-xs truncate">{shortenAddress(pair.address)}</div>
-                <div className="text-[10px] text-gray-500 mt-0.5">
-                  {pair.useCase === 998 ? 'Same Person' : 'Bi-directional'} (#{pair.useCase})
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="font-mono text-xs break-all">{pair.address}</div>
+                  <div className="text-[10px] text-gray-500 mt-0.5">
+                    {pair.useCase === 998 ? 'Same Person' : 'Bi-directional'} (#{pair.useCase})
+                  </div>
+                </div>
+                <PairStatus pair={pair} />
+                <div className="flex gap-2">
+                  {pair.incoming && !pair.outgoing && (
+                    <button
+                      onClick={() => setConfirmAction({ type: 'accept', pair })}
+                      disabled={proposing}
+                      className="text-xs text-accent hover:text-accent-hover transition-colors disabled:opacity-50"
+                    >
+                      Accept
+                    </button>
+                  )}
+                  {pair.outgoing && (
+                    <button
+                      onClick={() => setConfirmAction({ type: 'revoke', pair })}
+                      disabled={proposing}
+                      className="text-xs text-danger hover:text-red-300 transition-colors disabled:opacity-50"
+                    >
+                      Revoke
+                    </button>
+                  )}
                 </div>
               </div>
-              <PairStatus pair={pair} />
-              <div className="flex gap-2">
-                {pair.incoming && !pair.outgoing && (
-                  <button
-                    onClick={() => handleAccept(pair)}
-                    disabled={proposing}
-                    className="text-xs text-accent hover:text-accent-hover transition-colors disabled:opacity-50"
-                  >
-                    Accept
-                  </button>
-                )}
-                {pair.outgoing && (
-                  <button
-                    onClick={() => handleRevoke(pair)}
-                    disabled={proposing}
-                    className="text-xs text-danger hover:text-red-300 transition-colors disabled:opacity-50"
-                  >
-                    Revoke
-                  </button>
-                )}
-              </div>
+
+              {/* Confirmation dialog for this pair */}
+              {confirmAction && confirmAction.pair.address === pair.address && confirmAction.pair.useCase === pair.useCase && (
+                <div className="p-3 rounded border space-y-2 text-xs"
+                  style={{
+                    backgroundColor: confirmAction.type === 'accept' ? 'rgba(59,130,246,0.1)' : 'rgba(239,68,68,0.1)',
+                    borderColor: confirmAction.type === 'accept' ? 'rgba(59,130,246,0.3)' : 'rgba(239,68,68,0.3)',
+                  }}
+                >
+                  {confirmAction.type === 'accept' ? (
+                    <>
+                      <div className="font-medium text-blue-300">
+                        Confirm: Accept consolidation from this wallet?
+                      </div>
+                      <div className="font-mono break-all text-white bg-gray-900 rounded p-2">
+                        {pair.address}
+                      </div>
+                      <div className="text-blue-200">
+                        Verify this is YOUR wallet. Accepting consolidation from an unknown address
+                        merges their identity with your Safe — they would share your TDH, airdrops,
+                        and voting power.
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="font-medium text-red-300">
+                        Confirm: Revoke consolidation to this wallet?
+                      </div>
+                      <div className="font-mono break-all text-white bg-gray-900 rounded p-2">
+                        {pair.address}
+                      </div>
+                      <div className="text-red-200">
+                        This only revokes YOUR side of the consolidation.
+                        The other wallet's delegation to you will remain active
+                        until they revoke it separately.
+                      </div>
+                    </>
+                  )}
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => setConfirmAction(null)}
+                      className="flex-1 bg-gray-700 hover:bg-gray-600 text-white rounded px-3 py-1.5 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() =>
+                        confirmAction.type === 'accept'
+                          ? handleAcceptConfirmed(pair)
+                          : handleRevokeConfirmed(pair)
+                      }
+                      disabled={proposing}
+                      className={`flex-1 text-white rounded px-3 py-1.5 transition-colors disabled:opacity-50 ${
+                        confirmAction.type === 'accept'
+                          ? 'bg-blue-600 hover:bg-blue-500'
+                          : 'bg-red-600 hover:bg-red-500'
+                      }`}
+                    >
+                      {proposing ? 'Proposing...' : confirmAction.type === 'accept' ? 'Confirm Accept' : 'Confirm Revoke'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -172,10 +256,16 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
           <input
             type="text"
             value={walletAddress}
-            onChange={(e) => setWalletAddress(e.target.value)}
+            onChange={(e) => {
+              setWalletAddress(e.target.value)
+              setValidationError(null)
+            }}
             placeholder="0x..."
             className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:border-accent"
           />
+          {validationError && (
+            <div className="text-xs text-danger mt-1">{validationError}</div>
+          )}
         </div>
 
         <div>
@@ -204,11 +294,16 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
           </div>
         </div>
 
+        <div className="text-[10px] text-gray-500">
+          Consolidation will expire in 1 year. Renew by re-registering before expiry.
+        </div>
+
         {txError && <div className="text-xs text-danger">{txError}</div>}
         {safeTxHash && (
-          <div className="text-xs text-success">
-            Tx proposed! Hash: {safeTxHash.slice(0, 10)}...
-            <button type="button" onClick={reset} className="ml-2 underline">OK</button>
+          <div className="text-xs text-yellow-400 bg-yellow-400/10 border border-yellow-400/30 rounded p-2">
+            Tx proposed (hash: {safeTxHash.slice(0, 10)}...). It still needs Safe signer approval
+            before it takes effect on-chain.
+            <button type="button" onClick={reset} className="ml-2 underline">Dismiss</button>
           </div>
         )}
 
