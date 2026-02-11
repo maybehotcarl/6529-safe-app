@@ -1,4 +1,5 @@
 import type { OwnedNFT } from '../../api/types.ts'
+import { displayTokenId } from '../../lib/constants.ts'
 
 interface Props {
   nft: OwnedNFT
@@ -44,7 +45,7 @@ export default function NftCard({ nft, selected, onToggle, selectable }: Props) 
       <div className="p-2">
         <div className="text-xs font-medium truncate">{nft.name}</div>
         <div className="text-xs text-gray-400 truncate">
-          {nft.collection} #{nft.tokenId}
+          {nft.collection} #{displayTokenId(nft.contract, nft.tokenId)}
         </div>
       </div>
     </div>

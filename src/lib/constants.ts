@@ -44,3 +44,12 @@ export function getCollectionName(contract: string): string {
 export function isERC1155(contract: string): boolean {
   return contract.toLowerCase() === CONTRACTS.THE_MEMES.toLowerCase()
 }
+
+const PEBBLES_BASE_TOKEN_ID = 10000000000
+
+export function displayTokenId(contract: string, tokenId: number): number {
+  if (contract.toLowerCase() === CONTRACTS.NEXTGEN.toLowerCase() && tokenId >= PEBBLES_BASE_TOKEN_ID) {
+    return tokenId - PEBBLES_BASE_TOKEN_ID
+  }
+  return tokenId
+}

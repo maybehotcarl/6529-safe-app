@@ -3,7 +3,7 @@ import { useSafeAppsSDK } from '@safe-global/safe-apps-react-sdk'
 import { useOwnedNfts } from '../../hooks/useOwnedNfts.ts'
 import { useProposeTx } from '../../hooks/useProposeTx.ts'
 import { encodeERC721Transfer, encodeERC1155Transfer } from '../../contracts/encoders.ts'
-import { isERC1155 } from '../../lib/constants.ts'
+import { isERC1155, displayTokenId } from '../../lib/constants.ts'
 import { CONTRACTS } from '../../contracts/addresses.ts'
 import { validateAddress } from '../../lib/validation.ts'
 import NftCard from '../nfts/NftCard.tsx'
@@ -174,7 +174,7 @@ export default function TransferTab() {
             {Array.from(selected.entries()).map(([key, { nft, quantity }]) => (
               <div key={key} className="flex items-center justify-between text-sm">
                 <span className="truncate flex-1">
-                  {nft.name} <span className="text-gray-400">#{nft.tokenId}</span>
+                  {nft.name} <span className="text-gray-400">#{displayTokenId(nft.contract, nft.tokenId)}</span>
                 </span>
                 {isERC1155(nft.contract) && nft.balance > 1 && (
                   <div className="flex items-center gap-2 ml-3">

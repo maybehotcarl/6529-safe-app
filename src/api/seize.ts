@@ -19,40 +19,27 @@ export async function fetchOwnedNfts(
   contract?: string,
 ): Promise<OwnedNFT[]> {
   try {
-    let url = `${SEIZE_API}/api/nfts/owners?wallet=${address}`
-    if (contract) url += `&contract=${contract}`
-    url += '&page_size=200'
+    let url = `${SEIZE_API}/api/owners/${address}/nfts`
+    if (contract) url += `?contract=${contract}`
 
-    const allNfts: OwnedNFT[] = []
-    let page = 1
-    let hasMore = true
+    const res = await fetch(url)
+    if (!res.ok) return []
 
-    while (hasMore) {
-      const res = await fetch(`${url}&page=${page}`)
-      if (!res.ok) break
+    const data = await res.json()
+    const items = data.data || data || []
 
-      const data = await res.json()
-      const items = data.data || data || []
-
-      for (const item of items) {
-        allNfts.push({
-          tokenId: item.token_id ?? item.id,
-          contract: item.contract,
-          name: item.name || `#${item.token_id ?? item.id}`,
-          image: item.image || item.thumbnail || '',
-          thumbnail: item.thumbnail,
-          artist: item.artist,
-          balance: item.balance ?? 1,
-          collection: getCollectionName(item.contract),
-        })
-      }
-
-      hasMore = data.next !== null && data.next !== undefined && items.length > 0
-      page++
-      if (page > 20) break
-    }
-
-    return allNfts
+    return items
+      .filter((item: Record<string, unknown>) => item.id !== undefined)
+      .map((item: Record<string, unknown>) => ({
+        tokenId: (item.token_id ?? item.id) as number,
+        contract: item.contract as string,
+        name: (item.name || `#${item.token_id ?? item.id}`) as string,
+        image: (item.image || item.thumbnail || '') as string,
+        thumbnail: item.thumbnail as string | undefined,
+        artist: item.artist as string | undefined,
+        balance: (item.balance ?? 1) as number,
+        collection: getCollectionName(item.contract as string),
+      }))
   } catch (e) {
     console.error('Error fetching owned NFTs:', e)
     return []
