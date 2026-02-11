@@ -1,73 +1,73 @@
-# React + TypeScript + Vite
+# 6529 Safe App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A [Safe Apps SDK](https://docs.safe.global/sdk/overview) frontend for managing NFT delegations, wallet consolidation, and NFT transfers within the [6529 ecosystem](https://6529.io).
 
-Currently, two official plugins are available:
+Designed to run inside the Safe{Wallet} UI as a custom app.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## React Compiler
+- **Wallet Consolidation** — Link your Safe to a hot wallet so 6529 sees them as one identity (use cases 998/999). Shows real-time status of both sides and warns about incoming requests from unknown wallets.
+- **Delegation Management** — Register and revoke delegations across all 6529 use cases (minting, airdrops, voting, etc.) for specific collections or all collections.
+- **NFT Viewing** — Browse NFTs held by the Safe across The Memes, 6529 Gradient, and NextGen (Pebbles).
+- **Batch Transfers** — Select and transfer multiple NFTs (ERC-721 and ERC-1155) in a single Safe transaction.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Security
 
-## Expanding the ESLint configuration
+- EIP-55 checksum validation on all address inputs
+- Zero address and self-address blocking
+- Confirmation dialogs with full address display on all irreversible actions
+- Social engineering warnings on incoming consolidation requests
+- Chain ID verification (Ethereum Mainnet only)
+- Batch transfer cap (20 NFTs) to prevent gas issues
+- 1-year expiry on consolidations by default
+- Clear messaging that proposed transactions still need Safe signer approval
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Setup
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Adding to Safe
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+1. Deploy or run locally (`npm run dev` → `http://localhost:5173`)
+2. In Safe{Wallet}, go to Apps → My custom apps → Add custom app
+3. Enter the app URL
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Production deployment: https://6529-safe-app.vercel.app
+
+## Tech Stack
+
+- React 19 + TypeScript
+- Vite 7
+- Tailwind CSS 4
+- ethers.js 6
+- Safe Apps SDK / React SDK
+
+## Contracts
+
+| Contract | Address |
+|----------|---------|
+| NFT Delegation | `0x2202cb9c00487e7e8ef21e6d8e914b32e709f43d` |
+| The Memes | `0x33FD426905F149f8376e227d0C9D3340AaD17aF1` |
+| 6529 Gradient | `0x0C58Ef43fF3032005e472cB5709f8908aCb00205` |
+| NextGen (Pebbles) | `0x45882f9bc325E14FBb298a1Df930C43a874B83ae` |
+
+## API
+
+All delegation and NFT data is fetched from `https://api.6529.io`.
+
+## Project Structure
+
+```
+src/
+├── api/            # API calls to 6529 + response types
+├── components/
+│   ├── delegations/  # ConsolidationCard, DelegationsTab, RegisterForm
+│   ├── nfts/         # NftCard, NftsTab
+│   └── transfer/     # TransferTab
+├── contracts/      # ABIs, addresses, tx encoders
+├── hooks/          # useDelegations, useConsolidationStatus, useOwnedNfts, useProposeTx
+└── lib/            # Constants, address validation
 ```
