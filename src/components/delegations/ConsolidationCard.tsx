@@ -45,6 +45,7 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
 
   const [walletAddress, setWalletAddress] = useState('')
   const [useCase, setUseCase] = useState(998)
+  const [expiryOption, setExpiryOption] = useState<'forever' | '1year'>('forever')
   const [validationError, setValidationError] = useState<string | null>(null)
   const [showPairs, setShowPairs] = useState(false)
 
@@ -53,6 +54,11 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
     type: 'accept' | 'revoke'
     pair: ConsolidationPair
   } | null>(null)
+
+  const getExpiry = () =>
+    expiryOption === '1year'
+      ? BigInt(Math.floor(Date.now() / 1000)) + ONE_YEAR_SECS
+      : 0n
 
   const handleConsolidate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -64,7 +70,7 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
       return
     }
 
-    const expiry = BigInt(Math.floor(Date.now() / 1000)) + ONE_YEAR_SECS
+    const expiry = getExpiry()
 
     const tx = encodeRegisterDelegation(
       ALL_COLLECTIONS_ADDRESS,
@@ -85,7 +91,7 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
   }
 
   const handleAcceptConfirmed = async (pair: ConsolidationPair) => {
-    const expiry = BigInt(Math.floor(Date.now() / 1000)) + ONE_YEAR_SECS
+    const expiry = getExpiry()
 
     const tx = encodeRegisterDelegation(
       ALL_COLLECTIONS_ADDRESS,
@@ -294,8 +300,37 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
           )}
         </div>
 
-        <div className="text-[10px] text-gray-500">
-          Consolidation will expire in 1 year. Renew by re-registering before expiry.
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Expiry</label>
+          <div className="flex rounded overflow-hidden border border-gray-600 w-fit">
+            <button
+              type="button"
+              onClick={() => setExpiryOption('forever')}
+              className={`px-3 py-1 text-xs transition-colors ${
+                expiryOption === 'forever'
+                  ? 'bg-accent text-white'
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              Forever
+            </button>
+            <button
+              type="button"
+              onClick={() => setExpiryOption('1year')}
+              className={`px-3 py-1 text-xs transition-colors border-l border-gray-600 ${
+                expiryOption === '1year'
+                  ? 'bg-accent text-white'
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              1 Year
+            </button>
+          </div>
+          {expiryOption === '1year' && (
+            <div className="text-[10px] text-gray-500 mt-1">
+              Consolidation will expire in 1 year. Renew by re-registering before expiry.
+            </div>
+          )}
         </div>
 
         {txError && <div className="text-xs text-danger">{txError}</div>}

@@ -14,7 +14,7 @@ export default function RegisterForm({ onSuccess }: Props) {
   const [delegateAddress, setDelegateAddress] = useState('')
   const [useCase, setUseCase] = useState(1)
   const [collection, setCollection] = useState(COLLECTION_OPTIONS[0].address)
-  const [expiryDate, setExpiryDate] = useState('')
+  const [expiryOption, setExpiryOption] = useState<'forever' | '1year'>('forever')
   const [validationError, setValidationError] = useState<string | null>(null)
   const { loading, error, safeTxHash, proposeTx, reset } = useProposeTx()
 
@@ -28,8 +28,9 @@ export default function RegisterForm({ onSuccess }: Props) {
       return
     }
 
-    const expiry = expiryDate
-      ? BigInt(Math.floor(new Date(expiryDate).getTime() / 1000))
+    const ONE_YEAR_SECS = BigInt(365 * 24 * 60 * 60)
+    const expiry = expiryOption === '1year'
+      ? BigInt(Math.floor(Date.now() / 1000)) + ONE_YEAR_SECS
       : 0n
 
     const tx = encodeRegisterDelegation(
@@ -44,7 +45,7 @@ export default function RegisterForm({ onSuccess }: Props) {
     const hash = await proposeTx([tx])
     if (hash) {
       setDelegateAddress('')
-      setExpiryDate('')
+      setExpiryOption('forever')
       setValidationError(null)
       onSuccess()
     }
@@ -102,13 +103,31 @@ export default function RegisterForm({ onSuccess }: Props) {
       </div>
 
       <div>
-        <label className="block text-xs text-gray-400 mb-1">Expiry Date (optional)</label>
-        <input
-          type="date"
-          value={expiryDate}
-          onChange={e => setExpiryDate(e.target.value)}
-          className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-accent"
-        />
+        <label className="block text-xs text-gray-400 mb-1">Expiry</label>
+        <div className="flex rounded overflow-hidden border border-gray-600 w-fit">
+          <button
+            type="button"
+            onClick={() => setExpiryOption('forever')}
+            className={`px-3 py-1 text-xs transition-colors ${
+              expiryOption === 'forever'
+                ? 'bg-accent text-white'
+                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+            }`}
+          >
+            Forever
+          </button>
+          <button
+            type="button"
+            onClick={() => setExpiryOption('1year')}
+            className={`px-3 py-1 text-xs transition-colors border-l border-gray-600 ${
+              expiryOption === '1year'
+                ? 'bg-accent text-white'
+                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+            }`}
+          >
+            1 Year
+          </button>
+        </div>
       </div>
 
       {error && <div className="text-xs text-danger">{error}</div>}

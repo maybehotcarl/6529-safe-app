@@ -5,6 +5,7 @@ import { ALL_COLLECTIONS_ADDRESS } from '../../contracts/addresses.ts'
 import { encodeRevokeDelegation } from '../../contracts/encoders.ts'
 import { useProposeTx } from '../../hooks/useProposeTx.ts'
 import ConsolidationCard from './ConsolidationCard.tsx'
+import DelegationManagerCard from './DelegationManagerCard.tsx'
 import RegisterForm from './RegisterForm.tsx'
 
 function shortenAddress(addr: string): string {
@@ -36,6 +37,7 @@ export default function DelegationsTab() {
   return (
     <div className="space-y-6">
       <ConsolidationCard onDelegationChange={refresh} />
+      <DelegationManagerCard onDelegationChange={refresh} />
       <RegisterForm onSuccess={refresh} />
 
       <div>
