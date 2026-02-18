@@ -34,6 +34,30 @@ export function encodeRegisterDelegation(
   }
 }
 
+export function encodeRegisterDelegationUsingSubDelegation(
+  delegatorAddress: string,
+  collectionAddress: string,
+  delegationAddress: string,
+  expiryDate: bigint,
+  useCase: number,
+  allTokens: boolean,
+  tokenId: bigint,
+): SafeTx {
+  return {
+    to: CONTRACTS.NFT_DELEGATION,
+    value: '0',
+    data: delegationIface.encodeFunctionData('registerDelegationAddressUsingSubDelegation', [
+      delegatorAddress,
+      collectionAddress,
+      delegationAddress,
+      expiryDate,
+      useCase,
+      allTokens,
+      tokenId,
+    ]),
+  }
+}
+
 export function encodeRevokeDelegation(
   collectionAddress: string,
   delegationAddress: string,
