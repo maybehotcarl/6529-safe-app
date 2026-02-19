@@ -17,9 +17,10 @@ export function useENSResolution(input: string): ENSResolution {
 
   useEffect(() => {
     const trimmed = input.trim()
+    const alreadyHexAddress: boolean = isAddress(trimmed)
 
     // Already a valid hex address — no ENS needed
-    if (!trimmed || isAddress(trimmed)) {
+    if (!trimmed || alreadyHexAddress) {
       setResolvedAddress(null)
       setResolving(false)
       setError(null)
