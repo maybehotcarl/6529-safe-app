@@ -44,7 +44,6 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
   const { loading: proposing, error: txError, safeTxHash, proposeTx, reset } = useProposeTx()
 
   const [walletAddress, setWalletAddress] = useState('')
-  const [useCase, setUseCase] = useState(998)
   const [expiryOption, setExpiryOption] = useState<'forever' | '1year'>('forever')
   const [validationError, setValidationError] = useState<string | null>(null)
   const [showPairs, setShowPairs] = useState(false)
@@ -76,7 +75,7 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
       ALL_COLLECTIONS_ADDRESS,
       result.address,
       expiry,
-      useCase,
+      999,
       true,
       0n,
     )
@@ -140,9 +139,8 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
       </div>
 
       <p className="text-xs text-gray-400">
-        Link your Safe to a hot wallet so 6529 sees them as one identity.
+        Link your Safe to another wallet so 6529 sees them as one identity (use case 999).
         Both wallets must register to each other for consolidation to take effect.
-        Consolidations expire after 1 year and can be renewed.
       </p>
 
       {/* Existing consolidation pairs */}
@@ -279,24 +277,6 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
           />
           {validationError && (
             <div className="text-xs text-danger mt-1">{validationError}</div>
-          )}
-        </div>
-
-        <div>
-          <div className="flex items-center gap-2 text-sm text-gray-300">
-            <span>Type: Same Person (998)</span>
-            <button
-              type="button"
-              onClick={() => setUseCase(useCase === 999 ? 998 : 999)}
-              className="text-[10px] text-gray-500 hover:text-gray-300 transition-colors underline"
-            >
-              {useCase === 999 ? 'use Same Person (998)' : 'use Bi-directional (999) instead'}
-            </button>
-          </div>
-          {useCase === 999 && (
-            <div className="text-[10px] text-yellow-400 mt-1">
-              Bi-directional (999) is for consolidating wallets that may not belong to the same person. Most users want Same Person (998).
-            </div>
           )}
         </div>
 

@@ -1,189 +1,260 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSafeAppsSDK } from '@safe-global/safe-apps-react-sdk'
-import { USE_CASES, COLLECTION_OPTIONS } from '../../lib/constants.ts'
-import { encodeRegisterDelegationUsingSubDelegation } from '../../contracts/encoders.ts'
+import { fetchDelegations } from '../../api/seize.ts'
+import type { Delegation } from '../../api/types.ts'
+import { ALL_COLLECTIONS_ADDRESS } from '../../contracts/addresses.ts'
+import { encodeRegisterDelegation, encodeRevokeDelegation } from '../../contracts/encoders.ts'
 import { useProposeTx } from '../../hooks/useProposeTx.ts'
 import { validateAddress } from '../../lib/validation.ts'
 
-interface Props {
-  onSuccess: () => void
+const USE_CASE_DELEGATION_MANAGER = 998
+const ONE_YEAR_SECS = BigInt(365 * 24 * 60 * 60)
+
+function formatExpiry(timestamp: number): string {
+  if (!timestamp || timestamp === 0) return 'Never'
+  const date = new Date(timestamp * 1000)
+  if (date.getTime() < Date.now()) return 'Expired'
+  return date.toLocaleDateString()
 }
 
-export default function DelegationManagerCard({ onSuccess }: Props) {
+interface Props {
+  onDelegationChange: () => void
+}
+
+export default function DelegationManagerCard({ onDelegationChange }: Props) {
   const { safe } = useSafeAppsSDK()
-  const { loading, error, safeTxHash, proposeTx, reset } = useProposeTx()
+  const { loading: proposing, error: txError, safeTxHash, proposeTx, reset } = useProposeTx()
 
-  const [delegatorAddress, setDelegatorAddress] = useState('')
-  const [delegateAddress, setDelegateAddress] = useState('')
-  const [useCase, setUseCase] = useState(1)
-  const [collection, setCollection] = useState(COLLECTION_OPTIONS[0].address)
+  const [managers, setManagers] = useState<Delegation[]>([])
+  const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [showManagers, setShowManagers] = useState(false)
+
+  const [walletAddress, setWalletAddress] = useState('')
   const [expiryOption, setExpiryOption] = useState<'forever' | '1year'>('forever')
-  const [delegatorError, setDelegatorError] = useState<string | null>(null)
-  const [delegateError, setDelegateError] = useState<string | null>(null)
+  const [validationError, setValidationError] = useState<string | null>(null)
+  const [confirmRevoke, setConfirmRevoke] = useState<Delegation | null>(null)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setDelegatorError(null)
-    setDelegateError(null)
-
-    const delegatorResult = validateAddress(delegatorAddress, safe.safeAddress)
-    if (!delegatorResult.valid) {
-      setDelegatorError(delegatorResult.error)
-      return
+  const refresh = useCallback(async () => {
+    if (!safe.safeAddress) return
+    setLoading(true)
+    setFetchError(null)
+    try {
+      const data = await fetchDelegations(safe.safeAddress)
+      setManagers(data.filter(d => d.use_case === USE_CASE_DELEGATION_MANAGER))
+    } catch (e) {
+      setFetchError(e instanceof Error ? e.message : 'Failed to fetch delegation managers')
+    } finally {
+      setLoading(false)
     }
+  }, [safe.safeAddress])
 
-    const delegateResult = validateAddress(delegateAddress, safe.safeAddress)
-    if (!delegateResult.valid) {
-      setDelegateError(delegateResult.error)
-      return
-    }
+  useEffect(() => {
+    refresh()
+  }, [refresh])
 
-    const ONE_YEAR = BigInt(365 * 24 * 60 * 60)
-    const expiry = expiryOption === '1year'
-      ? BigInt(Math.floor(Date.now() / 1000)) + ONE_YEAR
+  const getExpiry = () =>
+    expiryOption === '1year'
+      ? BigInt(Math.floor(Date.now() / 1000)) + ONE_YEAR_SECS
       : 0n
 
-    const tx = encodeRegisterDelegationUsingSubDelegation(
-      delegatorResult.address,
-      collection,
-      delegateResult.address,
-      expiry,
-      useCase,
+  const handleGrant = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setValidationError(null)
+
+    const result = validateAddress(walletAddress, safe.safeAddress)
+    if (!result.valid) {
+      setValidationError(result.error)
+      return
+    }
+
+    const tx = encodeRegisterDelegation(
+      ALL_COLLECTIONS_ADDRESS,
+      result.address,
+      getExpiry(),
+      USE_CASE_DELEGATION_MANAGER,
       true,
       0n,
     )
 
     const hash = await proposeTx([tx])
     if (hash) {
-      setDelegatorAddress('')
-      setDelegateAddress('')
+      setWalletAddress('')
       setExpiryOption('forever')
-      setDelegatorError(null)
-      setDelegateError(null)
-      onSuccess()
+      setValidationError(null)
+      refresh()
+      onDelegationChange()
+    }
+  }
+
+  const handleRevokeConfirmed = async (d: Delegation) => {
+    const tx = encodeRevokeDelegation(
+      d.collection,
+      d.to_address,
+      d.use_case,
+    )
+    const hash = await proposeTx([tx])
+    setConfirmRevoke(null)
+    if (hash) {
+      refresh()
+      onDelegationChange()
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
-      <div>
+    <div className="p-4 bg-gray-900 rounded-lg border border-gray-700 space-y-4">
+      <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold uppercase tracking-wider text-gray-300">
           Delegation Manager
         </h3>
-        <p className="text-xs text-gray-400 mt-1">
-          If a vault wallet has granted this Safe delegation manager rights, use this to register
-          delegations on their behalf without the vault needing to sign.
-        </p>
+        <button
+          onClick={refresh}
+          className="text-xs text-gray-400 hover:text-white transition-colors"
+        >
+          Refresh
+        </button>
       </div>
 
-      <div>
-        <label className="block text-xs text-gray-400 mb-1">Vault Address (delegator)</label>
-        <input
-          type="text"
-          value={delegatorAddress}
-          onChange={e => {
-            setDelegatorAddress(e.target.value)
-            setDelegatorError(null)
-          }}
-          placeholder="0x... (the wallet that granted this Safe manager rights)"
-          className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:border-accent"
-        />
-        {delegatorError && (
-          <div className="text-xs text-danger mt-1">{delegatorError}</div>
-        )}
-      </div>
+      <p className="text-xs text-gray-400">
+        Grant a wallet the right to add or remove delegations on behalf of this Safe (use case 998).
+        Only one initial transaction is needed from the Safe — the manager handles everything after.
+      </p>
 
-      <div>
-        <label className="block text-xs text-gray-400 mb-1">Delegate Address</label>
-        <input
-          type="text"
-          value={delegateAddress}
-          onChange={e => {
-            setDelegateAddress(e.target.value)
-            setDelegateError(null)
-          }}
-          placeholder="0x... (the wallet to delegate to)"
-          className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:border-accent"
-        />
-        {delegateError && (
-          <div className="text-xs text-danger mt-1">{delegateError}</div>
-        )}
-      </div>
+      {/* Current managers */}
+      {loading && (
+        <div className="text-xs text-gray-400 py-2">Checking delegation managers...</div>
+      )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs text-gray-400 mb-1">Use Case</label>
-          <select
-            value={useCase}
-            onChange={e => setUseCase(Number(e.target.value))}
-            className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-accent"
-          >
-            {Object.entries(USE_CASES)
-              .filter(([id]) => id !== '998' && id !== '999')
-              .map(([id, name]) => (
-                <option key={id} value={id}>{name}</option>
-              ))}
-          </select>
-        </div>
+      {fetchError && <div className="text-xs text-danger">{fetchError}</div>}
 
-        <div>
-          <label className="block text-xs text-gray-400 mb-1">Collection</label>
-          <select
-            value={collection}
-            onChange={e => setCollection(e.target.value)}
-            className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-accent"
-          >
-            {COLLECTION_OPTIONS.map(opt => (
-              <option key={opt.address} value={opt.address}>{opt.label}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-xs text-gray-400 mb-1">Expiry</label>
-        <div className="flex rounded overflow-hidden border border-gray-600 w-fit">
+      {!loading && managers.length > 0 && (
+        <div className="space-y-2">
           <button
-            type="button"
-            onClick={() => setExpiryOption('forever')}
-            className={`px-3 py-1 text-xs transition-colors ${
-              expiryOption === 'forever'
-                ? 'bg-accent text-white'
-                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-            }`}
+            onClick={() => setShowManagers(!showManagers)}
+            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors"
           >
-            Forever
+            <span className={`transition-transform ${showManagers ? 'rotate-90' : ''}`}>&#9654;</span>
+            Active Managers ({managers.length})
           </button>
-          <button
-            type="button"
-            onClick={() => setExpiryOption('1year')}
-            className={`px-3 py-1 text-xs transition-colors border-l border-gray-600 ${
-              expiryOption === '1year'
-                ? 'bg-accent text-white'
-                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-            }`}
-          >
-            1 Year
-          </button>
-        </div>
-      </div>
 
-      {error && <div className="text-xs text-danger">{error}</div>}
-      {safeTxHash && (
-        <div className="text-xs text-yellow-400 bg-yellow-400/10 border border-yellow-400/30 rounded p-2">
-          Tx proposed (hash: {safeTxHash.slice(0, 10)}...). It still needs Safe signer approval
-          before it takes effect on-chain.
-          <button type="button" onClick={reset} className="ml-2 underline">Dismiss</button>
+          {showManagers && managers.map((d, i) => (
+            <div
+              key={i}
+              className="p-3 bg-gray-800 rounded border border-gray-700 space-y-2"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="font-mono text-xs break-all">{d.to_address}</div>
+                  <div className="text-[10px] text-gray-500 mt-0.5">
+                    Expires: {formatExpiry(d.expiry)}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setConfirmRevoke(d)}
+                  disabled={proposing}
+                  className="text-xs text-danger hover:text-red-300 transition-colors disabled:opacity-50"
+                >
+                  Revoke
+                </button>
+              </div>
+
+              {confirmRevoke && confirmRevoke.to_address === d.to_address && (
+                <div className="p-3 rounded border space-y-2 text-xs bg-red-900/10 border-red-500/30">
+                  <div className="font-medium text-red-300">
+                    Confirm: Revoke delegation manager access?
+                  </div>
+                  <div className="font-mono break-all text-white bg-gray-900 rounded p-2">
+                    {d.to_address}
+                  </div>
+                  <div className="text-red-200">
+                    This wallet will no longer be able to manage delegations on behalf of this Safe.
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => setConfirmRevoke(null)}
+                      className="flex-1 bg-gray-700 hover:bg-gray-600 text-white rounded px-3 py-1.5 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => handleRevokeConfirmed(d)}
+                      disabled={proposing}
+                      className="flex-1 bg-red-600 hover:bg-red-500 text-white rounded px-3 py-1.5 transition-colors disabled:opacity-50"
+                    >
+                      {proposing ? 'Proposing...' : 'Confirm Revoke'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 
-      <button
-        type="submit"
-        disabled={loading || !delegatorAddress || !delegateAddress}
-        className="w-full bg-accent hover:bg-accent-hover disabled:opacity-50 text-white rounded px-4 py-2 text-sm font-medium transition-colors"
-      >
-        {loading ? 'Proposing...' : 'Register Delegation via Manager'}
-      </button>
-    </form>
+      {/* Grant manager form */}
+      <form onSubmit={handleGrant} className="space-y-3 pt-2 border-t border-gray-700">
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Manager Address</label>
+          <input
+            type="text"
+            value={walletAddress}
+            onChange={(e) => {
+              setWalletAddress(e.target.value)
+              setValidationError(null)
+            }}
+            placeholder="0x..."
+            className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:border-accent"
+          />
+          {validationError && (
+            <div className="text-xs text-danger mt-1">{validationError}</div>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Expiry</label>
+          <div className="flex rounded overflow-hidden border border-gray-600 w-fit">
+            <button
+              type="button"
+              onClick={() => setExpiryOption('forever')}
+              className={`px-3 py-1 text-xs transition-colors ${
+                expiryOption === 'forever'
+                  ? 'bg-accent text-white'
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              Forever
+            </button>
+            <button
+              type="button"
+              onClick={() => setExpiryOption('1year')}
+              className={`px-3 py-1 text-xs transition-colors border-l border-gray-600 ${
+                expiryOption === '1year'
+                  ? 'bg-accent text-white'
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              1 Year
+            </button>
+          </div>
+        </div>
+
+        {txError && <div className="text-xs text-danger">{txError}</div>}
+        {safeTxHash && (
+          <div className="text-xs text-yellow-400 bg-yellow-400/10 border border-yellow-400/30 rounded p-2">
+            Tx proposed (hash: {safeTxHash.slice(0, 10)}...). It still needs Safe signer approval
+            before it takes effect on-chain.
+            <button type="button" onClick={reset} className="ml-2 underline">Dismiss</button>
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={proposing || !walletAddress}
+          className="w-full bg-accent hover:bg-accent-hover disabled:opacity-50 text-white rounded px-4 py-2 text-sm font-medium transition-colors"
+        >
+          {proposing ? 'Proposing...' : 'Grant Manager Access'}
+        </button>
+      </form>
+    </div>
   )
 }

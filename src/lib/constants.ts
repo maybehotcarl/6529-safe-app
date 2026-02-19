@@ -20,8 +20,8 @@ export const USE_CASES: Record<number, string> = {
   17: 'Sub-Delegation',
   18: 'NFT Utilities',
   19: 'Data / Analytics',
-  998: 'Consolidation (Same Person)',
-  999: 'Consolidation (Bi-directional)',
+  998: 'Delegation Management',
+  999: 'Consolidation',
 }
 
 export const COLLECTION_OPTIONS: { label: string; address: string }[] = [

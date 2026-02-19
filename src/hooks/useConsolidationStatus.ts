@@ -11,7 +11,7 @@ export interface ConsolidationPair {
 }
 
 function isConsolidation(d: Delegation): boolean {
-  return d.use_case === 998 || d.use_case === 999
+  return d.use_case === 999
 }
 
 export function useConsolidationStatus() {

@@ -37,7 +37,7 @@ export default function DelegationsTab() {
   return (
     <div className="space-y-6">
       <ConsolidationCard onDelegationChange={refresh} />
-      <DelegationManagerCard onSuccess={refresh} />
+      <DelegationManagerCard onDelegationChange={refresh} />
       <RegisterForm onSuccess={refresh} />
 
       <div>
