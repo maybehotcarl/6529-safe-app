@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { JsonRpcProvider, isAddress } from 'ethers'
 
 // Public mainnet RPC for ENS resolution only
-const provider = new JsonRpcProvider('https://cloudflare-eth.com')
+const provider = new JsonRpcProvider('https://eth.llamarpc.com')
 
 export interface ENSResolution {
   resolvedAddress: string | null
