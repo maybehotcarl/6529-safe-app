@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useSafeAppsSDK } from '@safe-global/safe-apps-react-sdk'
 import { useOwnedNfts } from '../../hooks/useOwnedNfts.ts'
 import { useProposeTx } from '../../hooks/useProposeTx.ts'
+import { useENSResolution } from '../../hooks/useENSResolution.ts'
 import { encodeERC721Transfer, encodeERC1155Transfer } from '../../contracts/encoders.ts'
 import { isERC1155, displayTokenId } from '../../lib/constants.ts'
 import { CONTRACTS } from '../../contracts/addresses.ts'
@@ -34,6 +35,9 @@ export default function TransferTab() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
 
+  const { resolvedAddress, resolving, error: ensError } = useENSResolution(recipient)
+  const effectiveRecipient = resolvedAddress ?? recipient
+
   const nftKey = (nft: OwnedNFT) => `${nft.contract}-${nft.tokenId}`
 
   const toggleSelect = (nft: OwnedNFT) => {
@@ -62,7 +66,7 @@ export default function TransferTab() {
 
   const handleReviewTransfer = () => {
     setValidationError(null)
-    const result = validateAddress(recipient, safe.safeAddress)
+    const result = validateAddress(effectiveRecipient, safe.safeAddress)
     if (!result.valid) {
       setValidationError(result.error)
       return
@@ -71,7 +75,7 @@ export default function TransferTab() {
   }
 
   const handleTransfer = async () => {
-    const result = validateAddress(recipient, safe.safeAddress)
+    const result = validateAddress(effectiveRecipient, safe.safeAddress)
     if (!result.valid) {
       setValidationError(result.error)
       setShowConfirm(false)
@@ -109,7 +113,7 @@ export default function TransferTab() {
     <div className="space-y-4">
       {/* Recipient */}
       <div className="p-4 bg-gray-900 rounded-lg border border-gray-700 space-y-3">
-        <label className="block text-xs text-gray-400">Recipient Address</label>
+        <label className="block text-xs text-gray-400">Recipient Address or ENS</label>
         <input
           type="text"
           value={recipient}
@@ -118,9 +122,20 @@ export default function TransferTab() {
             setValidationError(null)
             setShowConfirm(false)
           }}
-          placeholder="0x..."
+          placeholder="0x... or name.eth"
           className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:border-accent"
         />
+        {resolving && (
+          <div className="text-xs text-gray-400">Resolving ENS...</div>
+        )}
+        {resolvedAddress && !resolving && (
+          <div className="text-xs text-green-400 font-mono break-all">
+            ✓ {resolvedAddress}
+          </div>
+        )}
+        {ensError && !resolving && (
+          <div className="text-xs text-danger">{ensError}</div>
+        )}
         {validationError && (
           <div className="text-xs text-danger">{validationError}</div>
         )}
@@ -216,18 +231,21 @@ export default function TransferTab() {
           {!showConfirm ? (
             <button
               onClick={handleReviewTransfer}
-              disabled={!recipient || selected.size === 0}
+              disabled={!recipient || selected.size === 0 || resolving || !!ensError}
               className="w-full bg-accent hover:bg-accent-hover disabled:opacity-50 text-white rounded px-4 py-2 text-sm font-medium transition-colors"
             >
-              Review Transfer
+              {resolving ? 'Resolving ENS...' : 'Review Transfer'}
             </button>
           ) : (
             <div className="space-y-3 p-3 bg-gray-800 rounded border border-yellow-400/30">
               <div className="text-xs text-yellow-400">
                 Confirm: Transfer {selected.size} NFT{selected.size > 1 ? 's' : ''} to:
               </div>
+              {resolvedAddress && (
+                <div className="text-xs text-gray-400 font-mono">{recipient}</div>
+              )}
               <div className="font-mono text-xs break-all text-white bg-gray-900 rounded p-2">
-                {recipient}
+                {effectiveRecipient}
               </div>
               <div className="text-[10px] text-gray-400">
                 Verify the full address above. This action is irreversible.
