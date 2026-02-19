@@ -6,6 +6,7 @@ import { ALL_COLLECTIONS_ADDRESS } from '../../contracts/addresses.ts'
 import { encodeRegisterDelegation, encodeRevokeDelegation } from '../../contracts/encoders.ts'
 import { useProposeTx } from '../../hooks/useProposeTx.ts'
 import { validateAddress } from '../../lib/validation.ts'
+import { useENSResolution } from '../../hooks/useENSResolution.ts'
 
 const ONE_YEAR_SECS = BigInt(365 * 24 * 60 * 60)
 
@@ -48,6 +49,9 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
   const [validationError, setValidationError] = useState<string | null>(null)
   const [showPairs, setShowPairs] = useState(false)
 
+  const { resolvedAddress: ensResolved, resolving: ensResolving, error: ensError } = useENSResolution(walletAddress)
+  const effectiveWalletAddress = ensResolved ?? walletAddress
+
   // Confirmation state for accept/revoke
   const [confirmAction, setConfirmAction] = useState<{
     type: 'accept' | 'revoke'
@@ -63,7 +67,7 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
     e.preventDefault()
     setValidationError(null)
 
-    const result = validateAddress(walletAddress, safe.safeAddress)
+    const result = validateAddress(effectiveWalletAddress, safe.safeAddress)
     if (!result.valid) {
       setValidationError(result.error)
       return
@@ -264,7 +268,7 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
       {/* Consolidation form */}
       <form onSubmit={handleConsolidate} className="space-y-3 pt-2 border-t border-gray-700">
         <div>
-          <label className="block text-xs text-gray-400 mb-1">Wallet Address</label>
+          <label className="block text-xs text-gray-400 mb-1">Wallet Address or ENS</label>
           <input
             type="text"
             value={walletAddress}
@@ -272,9 +276,18 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
               setWalletAddress(e.target.value)
               setValidationError(null)
             }}
-            placeholder="0x..."
+            placeholder="0x... or name.eth"
             className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:border-accent"
           />
+          {ensResolving && (
+            <div className="text-xs text-gray-400 mt-1">Resolving ENS...</div>
+          )}
+          {ensResolved && !ensResolving && (
+            <div className="text-xs text-green-400 font-mono break-all mt-1">✓ {ensResolved}</div>
+          )}
+          {ensError && !ensResolving && (
+            <div className="text-xs text-danger mt-1">{ensError}</div>
+          )}
           {validationError && (
             <div className="text-xs text-danger mt-1">{validationError}</div>
           )}
@@ -324,10 +337,10 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
 
         <button
           type="submit"
-          disabled={proposing || !walletAddress}
+          disabled={proposing || !walletAddress || ensResolving || !!ensError}
           className="w-full bg-accent hover:bg-accent-hover disabled:opacity-50 text-white rounded px-4 py-2 text-sm font-medium transition-colors"
         >
-          {proposing ? 'Proposing...' : 'Consolidate'}
+          {proposing ? 'Proposing...' : ensResolving ? 'Resolving ENS...' : 'Consolidate'}
         </button>
       </form>
     </div>

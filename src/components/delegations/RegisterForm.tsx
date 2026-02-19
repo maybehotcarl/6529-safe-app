@@ -4,6 +4,7 @@ import { USE_CASES, COLLECTION_OPTIONS } from '../../lib/constants.ts'
 import { encodeRegisterDelegation } from '../../contracts/encoders.ts'
 import { useProposeTx } from '../../hooks/useProposeTx.ts'
 import { validateAddress } from '../../lib/validation.ts'
+import { useENSResolution } from '../../hooks/useENSResolution.ts'
 
 interface Props {
   onSuccess: () => void
@@ -18,11 +19,14 @@ export default function RegisterForm({ onSuccess }: Props) {
   const [validationError, setValidationError] = useState<string | null>(null)
   const { loading, error, safeTxHash, proposeTx, reset } = useProposeTx()
 
+  const { resolvedAddress: ensResolved, resolving: ensResolving, error: ensError } = useENSResolution(delegateAddress)
+  const effectiveDelegate = ensResolved ?? delegateAddress
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setValidationError(null)
 
-    const result = validateAddress(delegateAddress, safe.safeAddress)
+    const result = validateAddress(effectiveDelegate, safe.safeAddress)
     if (!result.valid) {
       setValidationError(result.error)
       return
@@ -56,7 +60,7 @@ export default function RegisterForm({ onSuccess }: Props) {
       <h3 className="text-sm font-bold uppercase tracking-wider text-gray-300">Register Delegation</h3>
 
       <div>
-        <label className="block text-xs text-gray-400 mb-1">Delegate Address</label>
+        <label className="block text-xs text-gray-400 mb-1">Delegate Address or ENS</label>
         <input
           type="text"
           value={delegateAddress}
@@ -64,9 +68,18 @@ export default function RegisterForm({ onSuccess }: Props) {
             setDelegateAddress(e.target.value)
             setValidationError(null)
           }}
-          placeholder="0x..."
+          placeholder="0x... or name.eth"
           className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:border-accent"
         />
+        {ensResolving && (
+          <div className="text-xs text-gray-400 mt-1">Resolving ENS...</div>
+        )}
+        {ensResolved && !ensResolving && (
+          <div className="text-xs text-green-400 font-mono break-all mt-1">✓ {ensResolved}</div>
+        )}
+        {ensError && !ensResolving && (
+          <div className="text-xs text-danger mt-1">{ensError}</div>
+        )}
         {validationError && (
           <div className="text-xs text-danger mt-1">{validationError}</div>
         )}
@@ -141,10 +154,10 @@ export default function RegisterForm({ onSuccess }: Props) {
 
       <button
         type="submit"
-        disabled={loading || !delegateAddress}
+        disabled={loading || !delegateAddress || ensResolving || !!ensError}
         className="w-full bg-accent hover:bg-accent-hover disabled:opacity-50 text-white rounded px-4 py-2 text-sm font-medium transition-colors"
       >
-        {loading ? 'Proposing...' : 'Register Delegation'}
+        {loading ? 'Proposing...' : ensResolving ? 'Resolving ENS...' : 'Register Delegation'}
       </button>
     </form>
   )
