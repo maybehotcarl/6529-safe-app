@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
-import { JsonRpcProvider, isAddress } from 'ethers'
+import { JsonRpcProvider, isAddress, Network } from 'ethers'
 
 // Public mainnet RPC for ENS resolution only
-const provider = new JsonRpcProvider('https://eth.llamarpc.com')
+// Explicitly set network to avoid detection delays
+const network = Network.from('mainnet')
+const provider = new JsonRpcProvider('https://eth.llamarpc.com', network, { staticNetwork: network })
 
 export interface ENSResolution {
   resolvedAddress: string | null
@@ -49,9 +51,10 @@ export function useENSResolution(input: string): ENSResolution {
           setResolvedAddress(null)
           setError(`Could not resolve "${trimmed}"`)
         }
-      } catch {
+      } catch (err) {
         setResolvedAddress(null)
-        setError(`Could not resolve "${trimmed}"`)
+        const message = err instanceof Error ? err.message : String(err)
+        setError(`Could not resolve "${trimmed}": ${message}`)
       } finally {
         setResolving(false)
       }
