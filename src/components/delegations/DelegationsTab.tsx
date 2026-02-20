@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { useSafeAppsSDK } from '@safe-global/safe-apps-react-sdk'
 import { useDelegations } from '../../hooks/useDelegations.ts'
 import { USE_CASES, getCollectionName } from '../../lib/constants.ts'
-import { ALL_COLLECTIONS_ADDRESS } from '../../contracts/addresses.ts'
+import { ALL_COLLECTIONS_ADDRESS, CONTRACTS } from '../../contracts/addresses.ts'
 import { encodeRevokeDelegation } from '../../contracts/encoders.ts'
 import { useProposeTx } from '../../hooks/useProposeTx.ts'
 import ConsolidationCard from './ConsolidationCard.tsx'
@@ -20,6 +21,7 @@ function formatExpiry(timestamp: number): string {
 }
 
 export default function DelegationsTab() {
+  const { safe } = useSafeAppsSDK()
   const { delegations, loading, error, refresh } = useDelegations()
   const { loading: revoking, proposeTx } = useProposeTx()
   const [showDelegations, setShowDelegations] = useState(false)
@@ -80,31 +82,46 @@ export default function DelegationsTab() {
                   <th className="pb-2 pr-4">Use Case</th>
                   <th className="pb-2 pr-4">Collection</th>
                   <th className="pb-2 pr-4">Expiry</th>
+                  <th className="pb-2 pr-4">Verify</th>
                   <th className="pb-2"></th>
                 </tr>
               </thead>
               <tbody>
-                {delegations.map((d, i) => (
-                  <tr key={i} className="border-b border-gray-800 hover:bg-gray-900/50">
-                    <td className="py-2 pr-4 font-mono text-xs">{shortenAddress(d.to_address)}</td>
-                    <td className="py-2 pr-4">{USE_CASES[d.use_case] ?? `#${d.use_case}`}</td>
-                    <td className="py-2 pr-4">
-                      {d.collection.toLowerCase() === ALL_COLLECTIONS_ADDRESS.toLowerCase()
-                        ? 'All'
-                        : getCollectionName(d.collection)}
-                    </td>
-                    <td className="py-2 pr-4">{formatExpiry(d.expiry)}</td>
-                    <td className="py-2">
-                      <button
-                        onClick={() => handleRevoke(d)}
-                        disabled={revoking}
-                        className="text-xs text-danger hover:text-red-300 transition-colors disabled:opacity-50"
-                      >
-                        Revoke
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {delegations.map((d, i) => {
+                  const etherscanUrl = `https://etherscan.io/address/${CONTRACTS.NFT_DELEGATION}?a=${safe.safeAddress}#readContract`
+                  return (
+                    <tr key={i} className="border-b border-gray-800 hover:bg-gray-900/50">
+                      <td className="py-2 pr-4 font-mono text-xs">{shortenAddress(d.to_address)}</td>
+                      <td className="py-2 pr-4">{USE_CASES[d.use_case] ?? `#${d.use_case}`}</td>
+                      <td className="py-2 pr-4">
+                        {d.collection.toLowerCase() === ALL_COLLECTIONS_ADDRESS.toLowerCase()
+                          ? 'All'
+                          : getCollectionName(d.collection)}
+                      </td>
+                      <td className="py-2 pr-4">{formatExpiry(d.expiry)}</td>
+                      <td className="py-2 pr-4">
+                        <a
+                          href={etherscanUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-accent hover:text-accent-hover transition-colors"
+                          title="Verify on-chain on Etherscan"
+                        >
+                          Etherscan ↗
+                        </a>
+                      </td>
+                      <td className="py-2">
+                        <button
+                          onClick={() => handleRevoke(d)}
+                          disabled={revoking}
+                          className="text-xs text-danger hover:text-red-300 transition-colors disabled:opacity-50"
+                        >
+                          Revoke
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
