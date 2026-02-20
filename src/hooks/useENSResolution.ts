@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import { JsonRpcProvider, isAddress, Network } from 'ethers'
 
 // Public mainnet RPC for ENS resolution only
-// Explicitly set network to avoid detection delays
+// Using publicnode - free, reliable, CORS-enabled
 const network = Network.from('mainnet')
-const provider = new JsonRpcProvider('https://eth.llamarpc.com', network, { staticNetwork: network })
+const provider = new JsonRpcProvider('https://ethereum.publicnode.com', network, { staticNetwork: network })
 
 export interface ENSResolution {
   resolvedAddress: string | null
