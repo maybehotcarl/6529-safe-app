@@ -1,24 +1,13 @@
 import { useState } from 'react'
 import { useSafeAppsSDK } from '@safe-global/safe-apps-react-sdk'
 import { useDelegations } from '../../hooks/useDelegations.ts'
-import { USE_CASES, getCollectionName } from '../../lib/constants.ts'
+import { USE_CASES, getCollectionName, shortenAddress, formatExpiry } from '../../lib/constants.ts'
 import { ALL_COLLECTIONS_ADDRESS, CONTRACTS } from '../../contracts/addresses.ts'
 import { encodeRevokeDelegation } from '../../contracts/encoders.ts'
 import { useProposeTx } from '../../hooks/useProposeTx.ts'
 import ConsolidationCard from './ConsolidationCard.tsx'
 import DelegationManagerCard from './DelegationManagerCard.tsx'
 import RegisterForm from './RegisterForm.tsx'
-
-function shortenAddress(addr: string): string {
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`
-}
-
-function formatExpiry(timestamp: number): string {
-  if (!timestamp || timestamp === 0) return 'Never'
-  const date = new Date(timestamp * 1000)
-  if (date.getTime() < Date.now()) return 'Expired'
-  return date.toLocaleDateString()
-}
 
 export default function DelegationsTab() {
   const { safe } = useSafeAppsSDK()
@@ -87,10 +76,10 @@ export default function DelegationsTab() {
                 </tr>
               </thead>
               <tbody>
-                {delegations.map((d, i) => {
+                {delegations.map((d) => {
                   const etherscanUrl = `https://etherscan.io/address/${CONTRACTS.NFT_DELEGATION}?a=${safe.safeAddress}#readContract`
                   return (
-                    <tr key={i} className="border-b border-gray-800 hover:bg-gray-900/50">
+                    <tr key={`${d.to_address}-${d.use_case}-${d.collection}`} className="border-b border-gray-800 hover:bg-gray-900/50">
                       <td className="py-2 pr-4 font-mono text-xs">{shortenAddress(d.to_address)}</td>
                       <td className="py-2 pr-4">{USE_CASES[d.use_case] ?? `#${d.use_case}`}</td>
                       <td className="py-2 pr-4">

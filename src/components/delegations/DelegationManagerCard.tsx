@@ -7,16 +7,9 @@ import { encodeRegisterDelegation, encodeRevokeDelegation } from '../../contract
 import { useProposeTx } from '../../hooks/useProposeTx.ts'
 import { validateAddress } from '../../lib/validation.ts'
 import { useENSResolution } from '../../hooks/useENSResolution.ts'
+import { ONE_YEAR_SECS, formatExpiry } from '../../lib/constants.ts'
 
 const USE_CASE_DELEGATION_MANAGER = 998
-const ONE_YEAR_SECS = BigInt(365 * 24 * 60 * 60)
-
-function formatExpiry(timestamp: number): string {
-  if (!timestamp || timestamp === 0) return 'Never'
-  const date = new Date(timestamp * 1000)
-  if (date.getTime() < Date.now()) return 'Expired'
-  return date.toLocaleDateString()
-}
 
 interface Props {
   onDelegationChange: () => void
@@ -141,9 +134,9 @@ export default function DelegationManagerCard({ onDelegationChange }: Props) {
             Active Managers ({managers.length})
           </button>
 
-          {showManagers && managers.map((d, i) => (
+          {showManagers && managers.map((d) => (
             <div
-              key={i}
+              key={`${d.to_address}-${d.use_case}`}
               className="p-3 bg-gray-800 rounded border border-gray-700 space-y-2"
             >
               <div className="flex items-center justify-between gap-3">

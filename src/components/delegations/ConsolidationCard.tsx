@@ -7,8 +7,7 @@ import { encodeRegisterDelegation, encodeRevokeDelegation } from '../../contract
 import { useProposeTx } from '../../hooks/useProposeTx.ts'
 import { validateAddress } from '../../lib/validation.ts'
 import { useENSResolution } from '../../hooks/useENSResolution.ts'
-
-const ONE_YEAR_SECS = BigInt(365 * 24 * 60 * 60)
+import { ONE_YEAR_SECS } from '../../lib/constants.ts'
 
 function PairStatus({ pair }: { pair: ConsolidationPair }) {
   if (pair.outgoing && pair.incoming) {

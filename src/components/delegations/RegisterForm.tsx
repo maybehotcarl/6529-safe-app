@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useSafeAppsSDK } from '@safe-global/safe-apps-react-sdk'
-import { USE_CASES, COLLECTION_OPTIONS } from '../../lib/constants.ts'
+import { USE_CASES, COLLECTION_OPTIONS, ONE_YEAR_SECS } from '../../lib/constants.ts'
 import { encodeRegisterDelegation } from '../../contracts/encoders.ts'
 import { useProposeTx } from '../../hooks/useProposeTx.ts'
 import { validateAddress } from '../../lib/validation.ts'
@@ -32,7 +32,6 @@ export default function RegisterForm({ onSuccess }: Props) {
       return
     }
 
-    const ONE_YEAR_SECS = BigInt(365 * 24 * 60 * 60)
     const expiry = expiryOption === '1year'
       ? BigInt(Math.floor(Date.now() / 1000)) + ONE_YEAR_SECS
       : 0n

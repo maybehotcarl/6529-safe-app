@@ -34,6 +34,7 @@ export default function TransferTab() {
   const [recipient, setRecipient] = useState('')
   const [showConfirm, setShowConfirm] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
+  const [batchWarning, setBatchWarning] = useState<string | null>(null)
 
   const { resolvedAddress, resolving, error: ensError } = useENSResolution(recipient)
   const effectiveRecipient = resolvedAddress ?? recipient
@@ -47,9 +48,10 @@ export default function TransferTab() {
       next.delete(key)
     } else {
       if (next.size >= MAX_BATCH_SIZE) {
-        alert(`Maximum ${MAX_BATCH_SIZE} NFTs per transfer batch to avoid gas issues.`)
+        setBatchWarning(`Maximum ${MAX_BATCH_SIZE} NFTs per transfer batch to avoid gas issues.`)
         return
       }
+      setBatchWarning(null)
       next.set(key, { nft, quantity: nft.balance })
     }
     setSelected(next)
@@ -176,6 +178,12 @@ export default function TransferTab() {
               onToggle={() => toggleSelect(nft)}
             />
           ))}
+        </div>
+      )}
+
+      {batchWarning && (
+        <div className="text-xs text-yellow-400 bg-yellow-400/10 border border-yellow-400/30 rounded p-2">
+          {batchWarning}
         </div>
       )}
 

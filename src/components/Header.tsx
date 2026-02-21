@@ -1,8 +1,5 @@
 import { useSafeAppsSDK } from '@safe-global/safe-apps-react-sdk'
-
-function shortenAddress(addr: string): string {
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`
-}
+import { shortenAddress } from '../lib/constants.ts'
 
 export default function Header() {
   const { safe } = useSafeAppsSDK()

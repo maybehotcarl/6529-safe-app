@@ -42,9 +42,9 @@ export default function App() {
         ))}
       </nav>
       <main className="max-w-6xl mx-auto p-4">
-        {activeTab === 'delegations' && <DelegationsTab />}
-        {activeTab === 'nfts' && <NftsTab />}
-        {activeTab === 'transfer' && <TransferTab />}
+        <div className={activeTab === 'delegations' ? '' : 'hidden'}><DelegationsTab /></div>
+        <div className={activeTab === 'nfts' ? '' : 'hidden'}><NftsTab /></div>
+        <div className={activeTab === 'transfer' ? '' : 'hidden'}><TransferTab /></div>
       </main>
     </div>
   )

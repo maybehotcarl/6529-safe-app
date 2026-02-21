@@ -4,7 +4,8 @@ import { JsonRpcProvider, isAddress, Network } from 'ethers'
 // Public mainnet RPC for ENS resolution only
 // Using publicnode - free, reliable, CORS-enabled
 const network = Network.from('mainnet')
-const provider = new JsonRpcProvider('https://ethereum.publicnode.com', network, { staticNetwork: network })
+const rpcUrl = import.meta.env.VITE_RPC_URL || 'https://ethereum.publicnode.com'
+const provider = new JsonRpcProvider(rpcUrl, network, { staticNetwork: network })
 
 export interface ENSResolution {
   resolvedAddress: string | null
@@ -37,6 +38,7 @@ export function useENSResolution(input: string): ENSResolution {
       return
     }
 
+    let cancelled = false
     setResolving(true)
     setError(null)
     setResolvedAddress(null)
@@ -44,6 +46,7 @@ export function useENSResolution(input: string): ENSResolution {
     const timer = setTimeout(async () => {
       try {
         const address = await provider.resolveName(trimmed)
+        if (cancelled) return
         if (address) {
           setResolvedAddress(address)
           setError(null)
@@ -52,15 +55,16 @@ export function useENSResolution(input: string): ENSResolution {
           setError(`Could not resolve "${trimmed}"`)
         }
       } catch (err) {
+        if (cancelled) return
         setResolvedAddress(null)
         const message = err instanceof Error ? err.message : String(err)
         setError(`Could not resolve "${trimmed}": ${message}`)
       } finally {
-        setResolving(false)
+        if (!cancelled) setResolving(false)
       }
     }, 600)
 
-    return () => clearTimeout(timer)
+    return () => { cancelled = true; clearTimeout(timer) }
   }, [input])
 
   return { resolvedAddress, resolving, error }

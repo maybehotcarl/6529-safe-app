@@ -2,7 +2,7 @@ import type { SeizeProfileResponse, OwnedNFT, Delegation } from './types.ts'
 import { CONTRACTS } from '../contracts/addresses.ts'
 import { getCollectionName } from '../lib/constants.ts'
 
-const SEIZE_API = 'https://api.6529.io'
+const SEIZE_API = import.meta.env.VITE_SEIZE_API_URL || 'https://api.6529.io'
 
 /** Map contract address → API collection filter name */
 const CONTRACT_TO_COLLECTION: Record<string, string> = {
@@ -34,10 +34,10 @@ export async function fetchOwnedNfts(
   try {
     const allItems: OwnedNFT[] = []
     const pageSize = 200
+    const maxPages = 50
     let page = 1
 
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
+    while (page <= maxPages) {
       let url = `${SEIZE_API}/api/profiles/${address}/collected?seized=SEIZED&account_for_consolidations=false&page_size=${pageSize}&page=${page}`
 
       if (contract) {
@@ -78,14 +78,30 @@ export async function fetchOwnedNfts(
   }
 }
 
+async function fetchAllDelegationPages(baseUrl: string): Promise<Delegation[]> {
+  const allItems: Delegation[] = []
+  const pageSize = 200
+  const maxPages = 50
+  let page = 1
+
+  while (page <= maxPages) {
+    const res = await fetch(`${baseUrl}&page_size=${pageSize}&page=${page}`)
+    if (!res.ok) return allItems
+    const data = await res.json()
+    const items: Delegation[] = data.data || []
+    allItems.push(...items)
+    if (!data.next || items.length < pageSize) break
+    page++
+  }
+
+  return allItems
+}
+
 export async function fetchDelegations(address: string): Promise<Delegation[]> {
   try {
-    const res = await fetch(
-      `${SEIZE_API}/api/delegations?wallet=${address}&page_size=200`,
+    return await fetchAllDelegationPages(
+      `${SEIZE_API}/api/delegations?wallet=${address}`,
     )
-    if (!res.ok) return []
-    const data = await res.json()
-    return data.data || []
   } catch (e) {
     console.error('Error fetching delegations:', e)
     return []
@@ -94,12 +110,9 @@ export async function fetchDelegations(address: string): Promise<Delegation[]> {
 
 export async function fetchIncomingDelegations(address: string): Promise<Delegation[]> {
   try {
-    const res = await fetch(
-      `${SEIZE_API}/api/delegations?to_address=${address}&page_size=200`,
+    return await fetchAllDelegationPages(
+      `${SEIZE_API}/api/delegations?to_address=${address}`,
     )
-    if (!res.ok) return []
-    const data = await res.json()
-    return data.data || []
   } catch (e) {
     console.error('Error fetching incoming delegations:', e)
     return []

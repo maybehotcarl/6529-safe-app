@@ -53,3 +53,16 @@ export function displayTokenId(contract: string, tokenId: number): number {
   }
   return tokenId
 }
+
+export const ONE_YEAR_SECS = BigInt(365 * 24 * 60 * 60)
+
+export function shortenAddress(addr: string): string {
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`
+}
+
+export function formatExpiry(timestamp: number): string {
+  if (!timestamp || timestamp === 0) return 'Never'
+  const date = new Date(timestamp * 1000)
+  if (date.getTime() < Date.now()) return 'Expired'
+  return date.toLocaleDateString()
+}
