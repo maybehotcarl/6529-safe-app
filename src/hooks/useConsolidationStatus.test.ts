@@ -1,6 +1,26 @@
-import { describe, it, expect } from 'vitest'
+// @vitest-environment jsdom
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { renderHook, waitFor } from '@testing-library/react'
 import { buildPairs, isConsolidation } from './useConsolidationStatus.ts'
 import type { Delegation } from '../api/types.ts'
+
+const { mockFetchDelegations, mockFetchIncoming, mockSdkState } = vi.hoisted(() => ({
+  mockFetchDelegations: vi.fn(),
+  mockFetchIncoming: vi.fn(),
+  mockSdkState: { safeAddress: '0xSafe' },
+}))
+
+vi.mock('@safe-global/safe-apps-react-sdk', () => ({
+  useSafeAppsSDK: () => ({
+    sdk: {},
+    safe: mockSdkState,
+  }),
+}))
+
+vi.mock('../api/seize.ts', () => ({
+  fetchDelegations: (...args: unknown[]) => mockFetchDelegations(...args),
+  fetchIncomingDelegations: (...args: unknown[]) => mockFetchIncoming(...args),
+}))
 
 function makeDelegation(overrides: Partial<Delegation>): Delegation {
   return {
@@ -89,5 +109,57 @@ describe('buildPairs', () => {
     const bbb = pairs.find(p => p.address === '0xBBB')!
     expect(bbb.outgoing).toBe(true)
     expect(bbb.incoming).toBe(true)
+  })
+})
+
+// Must import after vi.mock calls
+const { useConsolidationStatus } = await import('./useConsolidationStatus.ts')
+
+describe('useConsolidationStatus hook', () => {
+  beforeEach(() => {
+    mockFetchDelegations.mockReset()
+    mockFetchIncoming.mockReset()
+    mockSdkState.safeAddress = '0xSafe'
+  })
+
+  it('fetches and filters consolidation delegations on mount', async () => {
+    const consolDelegation = makeDelegation({ to_address: '0xAAA', use_case: 999 })
+    const otherDelegation = makeDelegation({ to_address: '0xBBB', use_case: 1 })
+    mockFetchDelegations.mockResolvedValue([consolDelegation, otherDelegation])
+    mockFetchIncoming.mockResolvedValue([])
+
+    const { result } = renderHook(() => useConsolidationStatus())
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(result.current.outgoing).toEqual([consolDelegation])
+    expect(result.current.incoming).toEqual([])
+    expect(result.current.pairs).toHaveLength(1)
+    expect(result.current.error).toBeNull()
+  })
+
+  it('sets error on fetch failure', async () => {
+    mockFetchDelegations.mockRejectedValue(new Error('API down'))
+    mockFetchIncoming.mockResolvedValue([])
+
+    const { result } = renderHook(() => useConsolidationStatus())
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(result.current.error).toBe('API down')
+  })
+
+  it('does not fetch when safeAddress is empty and sets loading to false', async () => {
+    mockSdkState.safeAddress = ''
+    const { result } = renderHook(() => useConsolidationStatus())
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(mockFetchDelegations).not.toHaveBeenCalled()
+    expect(mockFetchIncoming).not.toHaveBeenCalled()
+    expect(result.current.outgoing).toEqual([])
+    expect(result.current.incoming).toEqual([])
+    expect(result.current.pairs).toEqual([])
+    expect(result.current.error).toBeNull()
   })
 })
