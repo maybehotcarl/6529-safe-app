@@ -18,7 +18,7 @@ const COLLECTION_TO_CONTRACT: Record<string, string> = {
 }
 
 /** Validate that a raw API object has the required Delegation fields */
-function isDelegation(d: unknown): d is Delegation {
+export function isDelegation(d: unknown): d is Delegation {
   if (!d || typeof d !== 'object') return false
   const rec = d as Record<string, unknown>
   return (
