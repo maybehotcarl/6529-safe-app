@@ -17,6 +17,22 @@ const COLLECTION_TO_CONTRACT: Record<string, string> = {
   NEXTGEN: CONTRACTS.NEXTGEN,
 }
 
+/** Validate that a raw API object has the required Delegation fields */
+function isDelegation(d: unknown): d is Delegation {
+  if (!d || typeof d !== 'object') return false
+  const rec = d as Record<string, unknown>
+  return (
+    typeof rec.block === 'number' &&
+    typeof rec.from_address === 'string' &&
+    typeof rec.to_address === 'string' &&
+    typeof rec.collection === 'string' &&
+    typeof rec.use_case === 'number' &&
+    typeof rec.expiry === 'number' &&
+    typeof rec.all_tokens === 'boolean' &&
+    typeof rec.token_id === 'number'
+  )
+}
+
 /** Safely parse JSON from a Response, returning null on failure */
 async function safeJson(res: Response): Promise<unknown> {
   try {
@@ -121,7 +137,7 @@ export async function fetchDelegations(address: string): Promise<Delegation[]> {
   try {
     return await fetchAllPages<Delegation>(
       `${SEIZE_API}/api/delegations?wallet=${address}`,
-      (items) => items.filter((d): d is Delegation => d != null && typeof d === 'object'),
+      (items) => items.filter(isDelegation),
     )
   } catch {
     return []
@@ -132,7 +148,7 @@ export async function fetchIncomingDelegations(address: string): Promise<Delegat
   try {
     return await fetchAllPages<Delegation>(
       `${SEIZE_API}/api/delegations?to_address=${address}`,
-      (items) => items.filter((d): d is Delegation => d != null && typeof d === 'object'),
+      (items) => items.filter(isDelegation),
     )
   } catch {
     return []
