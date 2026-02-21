@@ -10,8 +10,39 @@ export interface ConsolidationPair {
   incoming: boolean
 }
 
-function isConsolidation(d: Delegation): boolean {
+export function isConsolidation(d: Delegation): boolean {
   return d.use_case === 999
+}
+
+export function buildPairs(out: Delegation[], inc: Delegation[]): ConsolidationPair[] {
+  const map = new Map<string, ConsolidationPair>()
+
+  for (const d of out) {
+    const key = `${d.to_address.toLowerCase()}-${d.use_case}`
+    map.set(key, {
+      address: d.to_address,
+      useCase: d.use_case,
+      outgoing: true,
+      incoming: false,
+    })
+  }
+
+  for (const d of inc) {
+    const key = `${d.from_address.toLowerCase()}-${d.use_case}`
+    const existing = map.get(key)
+    if (existing) {
+      existing.incoming = true
+    } else {
+      map.set(key, {
+        address: d.from_address,
+        useCase: d.use_case,
+        outgoing: false,
+        incoming: true,
+      })
+    }
+  }
+
+  return Array.from(map.values())
 }
 
 export function useConsolidationStatus() {
@@ -21,37 +52,6 @@ export function useConsolidationStatus() {
   const [pairs, setPairs] = useState<ConsolidationPair[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  const buildPairs = (out: Delegation[], inc: Delegation[]): ConsolidationPair[] => {
-    const map = new Map<string, ConsolidationPair>()
-
-    for (const d of out) {
-      const key = `${d.to_address.toLowerCase()}-${d.use_case}`
-      map.set(key, {
-        address: d.to_address,
-        useCase: d.use_case,
-        outgoing: true,
-        incoming: false,
-      })
-    }
-
-    for (const d of inc) {
-      const key = `${d.from_address.toLowerCase()}-${d.use_case}`
-      const existing = map.get(key)
-      if (existing) {
-        existing.incoming = true
-      } else {
-        map.set(key, {
-          address: d.from_address,
-          useCase: d.use_case,
-          outgoing: false,
-          incoming: true,
-        })
-      }
-    }
-
-    return Array.from(map.values())
-  }
 
   const refresh = useCallback(async () => {
     if (!safe.safeAddress) return
