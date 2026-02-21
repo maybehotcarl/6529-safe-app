@@ -46,7 +46,7 @@ async function safeJson(res: Response): Promise<unknown> {
  * Generic paginated fetch. Calls `baseUrl` with page_size/page params,
  * parses JSON safely, and passes `data` array items through `transform`.
  */
-async function fetchAllPages<T>(
+export async function fetchAllPages<T>(
   baseUrl: string,
   transform: (items: unknown[]) => T[],
   options?: { pageSize?: number; maxPages?: number; separator?: string },
