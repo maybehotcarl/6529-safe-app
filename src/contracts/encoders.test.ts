@@ -193,3 +193,95 @@ describe('encodeERC1155Transfer', () => {
     expect(decoded[4]).toBe('0x')
   })
 })
+
+const BAD_ADDR = 'not-an-address'
+
+describe('address validation', () => {
+  describe('encodeRegisterDelegation', () => {
+    it('throws on invalid collectionAddress', () => {
+      expect(() =>
+        encodeRegisterDelegation(BAD_ADDR, DUMMY_ADDR, 0n, 1, true, 0n),
+      ).toThrow('Invalid Ethereum address for collectionAddress')
+    })
+
+    it('throws on invalid delegationAddress', () => {
+      expect(() =>
+        encodeRegisterDelegation(CONTRACTS.THE_MEMES, BAD_ADDR, 0n, 1, true, 0n),
+      ).toThrow('Invalid Ethereum address for delegationAddress')
+    })
+  })
+
+  describe('encodeRegisterDelegationUsingSubDelegation', () => {
+    it('throws on invalid delegatorAddress', () => {
+      expect(() =>
+        encodeRegisterDelegationUsingSubDelegation(BAD_ADDR, CONTRACTS.THE_MEMES, DUMMY_ADDR, 0n, 1, true, 0n),
+      ).toThrow('Invalid Ethereum address for delegatorAddress')
+    })
+
+    it('throws on invalid collectionAddress', () => {
+      expect(() =>
+        encodeRegisterDelegationUsingSubDelegation(DUMMY_ADDR, BAD_ADDR, DUMMY_ADDR2, 0n, 1, true, 0n),
+      ).toThrow('Invalid Ethereum address for collectionAddress')
+    })
+
+    it('throws on invalid delegationAddress', () => {
+      expect(() =>
+        encodeRegisterDelegationUsingSubDelegation(DUMMY_ADDR, CONTRACTS.THE_MEMES, BAD_ADDR, 0n, 1, true, 0n),
+      ).toThrow('Invalid Ethereum address for delegationAddress')
+    })
+  })
+
+  describe('encodeRevokeDelegation', () => {
+    it('throws on invalid collectionAddress', () => {
+      expect(() =>
+        encodeRevokeDelegation(BAD_ADDR, DUMMY_ADDR, 1),
+      ).toThrow('Invalid Ethereum address for collectionAddress')
+    })
+
+    it('throws on invalid delegationAddress', () => {
+      expect(() =>
+        encodeRevokeDelegation(CONTRACTS.THE_MEMES, BAD_ADDR, 1),
+      ).toThrow('Invalid Ethereum address for delegationAddress')
+    })
+  })
+
+  describe('encodeERC721Transfer', () => {
+    it('throws on invalid contract', () => {
+      expect(() =>
+        encodeERC721Transfer(BAD_ADDR, DUMMY_ADDR, DUMMY_ADDR2, 1n),
+      ).toThrow('Invalid Ethereum address for contract')
+    })
+
+    it('throws on invalid from', () => {
+      expect(() =>
+        encodeERC721Transfer(CONTRACTS.GRADIENT, BAD_ADDR, DUMMY_ADDR2, 1n),
+      ).toThrow('Invalid Ethereum address for from')
+    })
+
+    it('throws on invalid to', () => {
+      expect(() =>
+        encodeERC721Transfer(CONTRACTS.GRADIENT, DUMMY_ADDR, BAD_ADDR, 1n),
+      ).toThrow('Invalid Ethereum address for to')
+    })
+  })
+
+  describe('encodeERC1155Transfer', () => {
+    it('throws on invalid contract', () => {
+      expect(() =>
+        encodeERC1155Transfer(BAD_ADDR, DUMMY_ADDR, DUMMY_ADDR2, 1n, 1n),
+      ).toThrow('Invalid Ethereum address for contract')
+    })
+
+    it('throws on invalid from', () => {
+      expect(() =>
+        encodeERC1155Transfer(CONTRACTS.THE_MEMES, BAD_ADDR, DUMMY_ADDR2, 1n, 1n),
+      ).toThrow('Invalid Ethereum address for from')
+    })
+
+    it('throws on invalid to', () => {
+      expect(() =>
+        encodeERC1155Transfer(CONTRACTS.THE_MEMES, DUMMY_ADDR, BAD_ADDR, 1n, 1n),
+      ).toThrow('Invalid Ethereum address for to')
+    })
+  })
+})
