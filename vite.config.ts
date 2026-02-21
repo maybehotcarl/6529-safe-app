@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -8,5 +9,9 @@ export default defineConfig({
     headers: {
       'Access-Control-Allow-Origin': '*',
     },
+  },
+  test: {
+    globals: true,
+    environment: 'node',
   },
 })
