@@ -17,11 +17,59 @@ const COLLECTION_TO_CONTRACT: Record<string, string> = {
   NEXTGEN: CONTRACTS.NEXTGEN,
 }
 
+/** Safely parse JSON from a Response, returning null on failure */
+async function safeJson(res: Response): Promise<unknown> {
+  try {
+    return await res.json()
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Generic paginated fetch. Calls `baseUrl` with page_size/page params,
+ * parses JSON safely, and passes `data` array items through `transform`.
+ */
+async function fetchAllPages<T>(
+  baseUrl: string,
+  transform: (items: unknown[]) => T[],
+  options?: { pageSize?: number; maxPages?: number; separator?: string },
+): Promise<T[]> {
+  const pageSize = options?.pageSize ?? 200
+  const maxPages = options?.maxPages ?? 50
+  const sep = options?.separator ?? (baseUrl.includes('?') ? '&' : '?')
+  const allItems: T[] = []
+  let page = 1
+
+  while (page <= maxPages) {
+    const url = `${baseUrl}${sep}page_size=${pageSize}&page=${page}`
+    const res = await fetch(url)
+    if (!res.ok) return allItems
+
+    const json = await safeJson(res)
+    if (!json || typeof json !== 'object') return allItems
+
+    const data = (json as Record<string, unknown>).data
+    if (!Array.isArray(data)) return allItems
+
+    const transformed = transform(data)
+    allItems.push(...transformed)
+
+    const hasNext = (json as Record<string, unknown>).next
+    if (!hasNext || data.length < pageSize) break
+    page++
+  }
+
+  return allItems
+}
+
 export async function fetchProfile(address: string): Promise<SeizeProfileResponse | null> {
   try {
     const res = await fetch(`${SEIZE_API}/api/profiles/${address}`)
     if (!res.ok) return null
-    return await res.json()
+    const json = await safeJson(res)
+    if (!json || typeof json !== 'object') return null
+    return json as SeizeProfileResponse
   } catch {
     return null
   }
@@ -32,89 +80,61 @@ export async function fetchOwnedNfts(
   contract?: string,
 ): Promise<OwnedNFT[]> {
   try {
-    const allItems: OwnedNFT[] = []
-    const pageSize = 200
-    const maxPages = 50
-    let page = 1
+    let baseUrl = `${SEIZE_API}/api/profiles/${address}/collected?seized=SEIZED&account_for_consolidations=false`
 
-    while (page <= maxPages) {
-      let url = `${SEIZE_API}/api/profiles/${address}/collected?seized=SEIZED&account_for_consolidations=false&page_size=${pageSize}&page=${page}`
+    if (contract) {
+      const collectionName = CONTRACT_TO_COLLECTION[contract.toLowerCase()]
+      if (collectionName) baseUrl += `&collection=${collectionName}`
+    }
 
-      if (contract) {
-        const collectionName = CONTRACT_TO_COLLECTION[contract.toLowerCase()]
-        if (collectionName) url += `&collection=${collectionName}`
-      }
-
-      const res = await fetch(url)
-      if (!res.ok) return allItems
-
-      const data = await res.json()
-      const items: Record<string, unknown>[] = data.data || []
-
+    return await fetchAllPages<OwnedNFT>(baseUrl, (items) => {
+      const result: OwnedNFT[] = []
       for (const item of items) {
-        const contractAddr = COLLECTION_TO_CONTRACT[item.collection as string]
+        if (!item || typeof item !== 'object') continue
+        const rec = item as Record<string, unknown>
+
+        const contractAddr = COLLECTION_TO_CONTRACT[rec.collection as string]
         if (!contractAddr) continue // skip unsupported collections (e.g. MEMELAB)
 
-        allItems.push({
-          tokenId: item.token_id as number,
+        const tokenId = rec.token_id
+        if (typeof tokenId !== 'number') continue
+
+        result.push({
+          tokenId,
           contract: contractAddr,
-          name: (item.token_name as string) || `#${item.token_id}`,
-          image: (item.img as string) || '',
-          thumbnail: item.img as string | undefined,
+          name: (rec.token_name as string) || `#${tokenId}`,
+          image: (rec.img as string) || '',
+          thumbnail: rec.img as string | undefined,
           artist: undefined,
-          balance: (item.seized_count as number) ?? 1,
+          balance: (rec.seized_count as number) ?? 1,
           collection: getCollectionName(contractAddr),
         })
       }
-
-      if (!data.next || items.length < pageSize) break
-      page++
-    }
-
-    return allItems
-  } catch (e) {
-    console.error('Error fetching owned NFTs:', e)
+      return result
+    })
+  } catch {
     return []
   }
 }
 
-async function fetchAllDelegationPages(baseUrl: string): Promise<Delegation[]> {
-  const allItems: Delegation[] = []
-  const pageSize = 200
-  const maxPages = 50
-  let page = 1
-
-  while (page <= maxPages) {
-    const res = await fetch(`${baseUrl}&page_size=${pageSize}&page=${page}`)
-    if (!res.ok) return allItems
-    const data = await res.json()
-    const items: Delegation[] = data.data || []
-    allItems.push(...items)
-    if (!data.next || items.length < pageSize) break
-    page++
-  }
-
-  return allItems
-}
-
 export async function fetchDelegations(address: string): Promise<Delegation[]> {
   try {
-    return await fetchAllDelegationPages(
+    return await fetchAllPages<Delegation>(
       `${SEIZE_API}/api/delegations?wallet=${address}`,
+      (items) => items.filter((d): d is Delegation => d != null && typeof d === 'object'),
     )
-  } catch (e) {
-    console.error('Error fetching delegations:', e)
+  } catch {
     return []
   }
 }
 
 export async function fetchIncomingDelegations(address: string): Promise<Delegation[]> {
   try {
-    return await fetchAllDelegationPages(
+    return await fetchAllPages<Delegation>(
       `${SEIZE_API}/api/delegations?to_address=${address}`,
+      (items) => items.filter((d): d is Delegation => d != null && typeof d === 'object'),
     )
-  } catch (e) {
-    console.error('Error fetching incoming delegations:', e)
+  } catch {
     return []
   }
 }

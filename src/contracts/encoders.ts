@@ -1,6 +1,12 @@
-import { Interface } from 'ethers'
+import { Interface, isAddress } from 'ethers'
 import { NFT_DELEGATION_ABI, ERC721_ABI, ERC1155_ABI } from './abis.ts'
 import { CONTRACTS } from './addresses.ts'
+
+function assertAddress(value: string, label: string): void {
+  if (!isAddress(value)) {
+    throw new Error(`Invalid Ethereum address for ${label}: ${value}`)
+  }
+}
 
 const delegationIface = new Interface(NFT_DELEGATION_ABI)
 const erc721Iface = new Interface(ERC721_ABI)
@@ -20,6 +26,8 @@ export function encodeRegisterDelegation(
   allTokens: boolean,
   tokenId: bigint,
 ): SafeTx {
+  assertAddress(collectionAddress, 'collectionAddress')
+  assertAddress(delegationAddress, 'delegationAddress')
   return {
     to: CONTRACTS.NFT_DELEGATION,
     value: '0',
@@ -43,6 +51,9 @@ export function encodeRegisterDelegationUsingSubDelegation(
   allTokens: boolean,
   tokenId: bigint,
 ): SafeTx {
+  assertAddress(delegatorAddress, 'delegatorAddress')
+  assertAddress(collectionAddress, 'collectionAddress')
+  assertAddress(delegationAddress, 'delegationAddress')
   return {
     to: CONTRACTS.NFT_DELEGATION,
     value: '0',
@@ -63,6 +74,8 @@ export function encodeRevokeDelegation(
   delegationAddress: string,
   useCase: number,
 ): SafeTx {
+  assertAddress(collectionAddress, 'collectionAddress')
+  assertAddress(delegationAddress, 'delegationAddress')
   return {
     to: CONTRACTS.NFT_DELEGATION,
     value: '0',
@@ -80,6 +93,9 @@ export function encodeERC721Transfer(
   to: string,
   tokenId: bigint,
 ): SafeTx {
+  assertAddress(contract, 'contract')
+  assertAddress(from, 'from')
+  assertAddress(to, 'to')
   return {
     to: contract,
     value: '0',
@@ -94,6 +110,9 @@ export function encodeERC1155Transfer(
   tokenId: bigint,
   amount: bigint,
 ): SafeTx {
+  assertAddress(contract, 'contract')
+  assertAddress(from, 'from')
+  assertAddress(to, 'to')
   return {
     to: contract,
     value: '0',

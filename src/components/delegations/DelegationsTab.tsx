@@ -14,8 +14,14 @@ export default function DelegationsTab() {
   const { delegations, loading, error, refresh } = useDelegations()
   const { loading: revoking, proposeTx } = useProposeTx()
   const [showDelegations, setShowDelegations] = useState(false)
+  const [revokeError, setRevokeError] = useState<string | null>(null)
 
   const handleRevoke = async (delegation: { collection: string; to_address: string; use_case: number }) => {
+    if (safe.chainId !== 1) {
+      setRevokeError('Wrong network — switch your Safe to Ethereum Mainnet (chain 1)')
+      return
+    }
+    setRevokeError(null)
     const tx = encodeRevokeDelegation(
       delegation.collection,
       delegation.to_address,
@@ -54,6 +60,10 @@ export default function DelegationsTab() {
 
         {showDelegations && error && (
           <div className="text-sm text-danger py-4">{error}</div>
+        )}
+
+        {revokeError && (
+          <div className="text-xs text-danger py-2">{revokeError}</div>
         )}
 
         {showDelegations && !loading && !error && delegations.length === 0 && (

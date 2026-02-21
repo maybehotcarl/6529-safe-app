@@ -4,6 +4,7 @@ import Header from './components/Header.tsx'
 import DelegationsTab from './components/delegations/DelegationsTab.tsx'
 import NftsTab from './components/nfts/NftsTab.tsx'
 import TransferTab from './components/transfer/TransferTab.tsx'
+import ErrorBoundary from './components/ErrorBoundary.tsx'
 
 type Tab = 'delegations' | 'nfts' | 'transfer'
 
@@ -42,9 +43,15 @@ export default function App() {
         ))}
       </nav>
       <main className="max-w-6xl mx-auto p-4">
-        <div className={activeTab === 'delegations' ? '' : 'hidden'}><DelegationsTab /></div>
-        <div className={activeTab === 'nfts' ? '' : 'hidden'}><NftsTab /></div>
-        <div className={activeTab === 'transfer' ? '' : 'hidden'}><TransferTab /></div>
+        <div className={activeTab === 'delegations' ? '' : 'hidden'}>
+          <ErrorBoundary compact><DelegationsTab /></ErrorBoundary>
+        </div>
+        <div className={activeTab === 'nfts' ? '' : 'hidden'}>
+          <ErrorBoundary compact><NftsTab /></ErrorBoundary>
+        </div>
+        <div className={activeTab === 'transfer' ? '' : 'hidden'}>
+          <ErrorBoundary compact><TransferTab /></ErrorBoundary>
+        </div>
       </main>
     </div>
   )

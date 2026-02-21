@@ -1,5 +1,8 @@
 import { CONTRACTS, ALL_COLLECTIONS_ADDRESS } from '../contracts/addresses.ts'
 
+export const USE_CASE_DELEGATION_MANAGER = 998
+export const USE_CASE_CONSOLIDATION = 999
+
 export const USE_CASES: Record<number, string> = {
   1: 'All',
   2: 'Minting / Allowlist',

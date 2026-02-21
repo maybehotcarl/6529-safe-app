@@ -1,12 +1,10 @@
 import type { OwnedNFT } from '../../api/types.ts'
 import { displayTokenId } from '../../lib/constants.ts'
 
-interface Props {
-  nft: OwnedNFT
-  selected?: boolean
-  onToggle?: () => void
-  selectable?: boolean
-}
+type Props = { nft: OwnedNFT } & (
+  | { selectable: true; selected: boolean; onToggle: () => void }
+  | { selectable?: false; selected?: never; onToggle?: never }
+)
 
 export default function NftCard({ nft, selected, onToggle, selectable }: Props) {
   return (

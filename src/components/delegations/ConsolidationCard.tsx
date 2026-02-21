@@ -7,7 +7,17 @@ import { encodeRegisterDelegation, encodeRevokeDelegation } from '../../contract
 import { useProposeTx } from '../../hooks/useProposeTx.ts'
 import { validateAddress } from '../../lib/validation.ts'
 import { useENSResolution } from '../../hooks/useENSResolution.ts'
-import { ONE_YEAR_SECS } from '../../lib/constants.ts'
+import { ONE_YEAR_SECS, USE_CASE_CONSOLIDATION } from '../../lib/constants.ts'
+
+const CONFIRM_ACCEPT_STYLE = {
+  backgroundColor: 'rgba(59,130,246,0.1)',
+  borderColor: 'rgba(59,130,246,0.3)',
+} as const
+
+const CONFIRM_REVOKE_STYLE = {
+  backgroundColor: 'rgba(239,68,68,0.1)',
+  borderColor: 'rgba(239,68,68,0.3)',
+} as const
 
 function PairStatus({ pair }: { pair: ConsolidationPair }) {
   if (pair.outgoing && pair.incoming) {
@@ -66,6 +76,11 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
     e.preventDefault()
     setValidationError(null)
 
+    if (safe.chainId !== 1) {
+      setValidationError('Wrong network — switch your Safe to Ethereum Mainnet (chain 1)')
+      return
+    }
+
     const result = validateAddress(effectiveWalletAddress, safe.safeAddress)
     if (!result.valid) {
       setValidationError(result.error)
@@ -78,7 +93,7 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
       ALL_COLLECTIONS_ADDRESS,
       result.address,
       expiry,
-      999,
+      USE_CASE_CONSOLIDATION,
       true,
       0n,
     )
@@ -93,6 +108,11 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
   }
 
   const handleAcceptConfirmed = async (pair: ConsolidationPair) => {
+    if (safe.chainId !== 1) {
+      setValidationError('Wrong network — switch your Safe to Ethereum Mainnet (chain 1)')
+      setConfirmAction(null)
+      return
+    }
     const expiry = getExpiry()
 
     const tx = encodeRegisterDelegation(
@@ -113,6 +133,11 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
   }
 
   const handleRevokeConfirmed = async (pair: ConsolidationPair) => {
+    if (safe.chainId !== 1) {
+      setValidationError('Wrong network — switch your Safe to Ethereum Mainnet (chain 1)')
+      setConfirmAction(null)
+      return
+    }
     const tx = encodeRevokeDelegation(
       ALL_COLLECTIONS_ADDRESS,
       pair.address,
@@ -200,10 +225,7 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
               {/* Confirmation dialog for this pair */}
               {confirmAction && confirmAction.pair.address === pair.address && confirmAction.pair.useCase === pair.useCase && (
                 <div className="p-3 rounded border space-y-2 text-xs"
-                  style={{
-                    backgroundColor: confirmAction.type === 'accept' ? 'rgba(59,130,246,0.1)' : 'rgba(239,68,68,0.1)',
-                    borderColor: confirmAction.type === 'accept' ? 'rgba(59,130,246,0.3)' : 'rgba(239,68,68,0.3)',
-                  }}
+                  style={confirmAction.type === 'accept' ? CONFIRM_ACCEPT_STYLE : CONFIRM_REVOKE_STYLE}
                 >
                   {confirmAction.type === 'accept' ? (
                     <>
