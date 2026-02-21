@@ -7,9 +7,7 @@ import { encodeRegisterDelegation, encodeRevokeDelegation } from '../../contract
 import { useProposeTx } from '../../hooks/useProposeTx.ts'
 import { validateAddress } from '../../lib/validation.ts'
 import { useENSResolution } from '../../hooks/useENSResolution.ts'
-import { ONE_YEAR_SECS, formatExpiry } from '../../lib/constants.ts'
-
-const USE_CASE_DELEGATION_MANAGER = 998
+import { ONE_YEAR_SECS, formatExpiry, USE_CASE_DELEGATION_MANAGER } from '../../lib/constants.ts'
 
 interface Props {
   onDelegationChange: () => void
@@ -59,6 +57,11 @@ export default function DelegationManagerCard({ onDelegationChange }: Props) {
     e.preventDefault()
     setValidationError(null)
 
+    if (safe.chainId !== 1) {
+      setValidationError('Wrong network — switch your Safe to Ethereum Mainnet (chain 1)')
+      return
+    }
+
     const result = validateAddress(effectiveWalletAddress, safe.safeAddress)
     if (!result.valid) {
       setValidationError(result.error)
@@ -85,6 +88,11 @@ export default function DelegationManagerCard({ onDelegationChange }: Props) {
   }
 
   const handleRevokeConfirmed = async (d: Delegation) => {
+    if (safe.chainId !== 1) {
+      setValidationError('Wrong network — switch your Safe to Ethereum Mainnet (chain 1)')
+      setConfirmRevoke(null)
+      return
+    }
     const tx = encodeRevokeDelegation(
       d.collection,
       d.to_address,

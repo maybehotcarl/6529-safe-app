@@ -59,11 +59,13 @@ describe('useDelegations', () => {
     expect(result.current.delegations).toEqual([])
   })
 
-  it('does not fetch when safeAddress is empty', () => {
+  it('does not fetch when safeAddress is empty', async () => {
     mockSdkState.safeAddress = ''
     const { result } = renderHook(() => useDelegations())
 
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
     expect(mockFetchDelegations).not.toHaveBeenCalled()
-    expect(result.current.loading).toBe(true)
+    expect(result.current.loading).toBe(false)
   })
 })

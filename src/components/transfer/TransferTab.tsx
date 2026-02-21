@@ -77,6 +77,11 @@ export default function TransferTab() {
   }
 
   const handleTransfer = async () => {
+    if (safe.chainId !== 1) {
+      setValidationError('Wrong network — switch your Safe to Ethereum Mainnet (chain 1)')
+      setShowConfirm(false)
+      return
+    }
     const result = validateAddress(effectiveRecipient, safe.safeAddress)
     if (!result.valid) {
       setValidationError(result.error)

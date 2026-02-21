@@ -10,7 +10,10 @@ export function useDelegations() {
   const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
-    if (!safe.safeAddress) return
+    if (!safe.safeAddress) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError(null)
     try {

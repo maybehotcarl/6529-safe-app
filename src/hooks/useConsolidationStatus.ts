@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSafeAppsSDK } from '@safe-global/safe-apps-react-sdk'
 import { fetchDelegations, fetchIncomingDelegations } from '../api/seize.ts'
 import type { Delegation } from '../api/types.ts'
+import { USE_CASE_CONSOLIDATION } from '../lib/constants.ts'
 
 export interface ConsolidationPair {
   address: string
@@ -11,7 +12,7 @@ export interface ConsolidationPair {
 }
 
 export function isConsolidation(d: Delegation): boolean {
-  return d.use_case === 999
+  return d.use_case === USE_CASE_CONSOLIDATION
 }
 
 export function buildPairs(out: Delegation[], inc: Delegation[]): ConsolidationPair[] {
@@ -54,7 +55,10 @@ export function useConsolidationStatus() {
   const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
-    if (!safe.safeAddress) return
+    if (!safe.safeAddress) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError(null)
     try {

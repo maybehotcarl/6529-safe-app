@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useSafeAppsSDK } from '@safe-global/safe-apps-react-sdk'
-import { USE_CASES, COLLECTION_OPTIONS, ONE_YEAR_SECS } from '../../lib/constants.ts'
+import { USE_CASES, COLLECTION_OPTIONS, ONE_YEAR_SECS, USE_CASE_DELEGATION_MANAGER, USE_CASE_CONSOLIDATION } from '../../lib/constants.ts'
 import { encodeRegisterDelegation } from '../../contracts/encoders.ts'
 import { useProposeTx } from '../../hooks/useProposeTx.ts'
 import { validateAddress } from '../../lib/validation.ts'
@@ -25,6 +25,11 @@ export default function RegisterForm({ onSuccess }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setValidationError(null)
+
+    if (safe.chainId !== 1) {
+      setValidationError('Wrong network — switch your Safe to Ethereum Mainnet (chain 1)')
+      return
+    }
 
     const result = validateAddress(effectiveDelegate, safe.safeAddress)
     if (!result.valid) {
@@ -93,7 +98,7 @@ export default function RegisterForm({ onSuccess }: Props) {
             className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-accent"
           >
             {Object.entries(USE_CASES)
-              .filter(([id]) => id !== '998' && id !== '999')
+              .filter(([id]) => id !== String(USE_CASE_DELEGATION_MANAGER) && id !== String(USE_CASE_CONSOLIDATION))
               .map(([id, name]) => (
                 <option key={id} value={id}>{name}</option>
               ))}

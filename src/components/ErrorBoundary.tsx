@@ -3,6 +3,8 @@ import type { ReactNode, ErrorInfo } from 'react'
 
 interface Props {
   children: ReactNode
+  /** When true, renders a compact inline fallback instead of full-screen */
+  compact?: boolean
 }
 
 interface State {
@@ -23,6 +25,23 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      if (this.props.compact) {
+        return (
+          <div className="p-4 bg-gray-900 rounded-lg border border-red-700 text-center space-y-2">
+            <p className="text-sm text-red-400 font-medium">Something went wrong</p>
+            <p className="text-xs text-gray-400">
+              {this.state.error?.message || 'An unexpected error occurred.'}
+            </p>
+            <button
+              onClick={() => this.setState({ hasError: false, error: null })}
+              className="bg-accent hover:bg-accent-hover text-white rounded px-3 py-1 text-xs transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        )
+      }
+
       return (
         <div className="min-h-screen bg-black text-white flex items-center justify-center p-8">
           <div className="max-w-md space-y-4 text-center">
