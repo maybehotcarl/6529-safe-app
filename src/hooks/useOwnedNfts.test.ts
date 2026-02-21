@@ -66,10 +66,14 @@ describe('useOwnedNfts', () => {
     expect(result.current.nfts).toEqual([])
   })
 
-  it('does not fetch when safeAddress is empty', () => {
+  it('does not fetch when safeAddress is empty and sets loading to false', async () => {
     mockSdkState.safeAddress = ''
-    renderHook(() => useOwnedNfts())
+    const { result } = renderHook(() => useOwnedNfts())
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
 
     expect(mockFetchOwnedNfts).not.toHaveBeenCalled()
+    expect(result.current.nfts).toEqual([])
+    expect(result.current.error).toBeNull()
   })
 })
