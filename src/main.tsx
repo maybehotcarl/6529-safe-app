@@ -1,4 +1,5 @@
 import { StrictMode } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import { createRoot } from 'react-dom/client'
 import SafeProvider from '@safe-global/safe-apps-react-sdk'
 import ErrorBoundary from './components/ErrorBoundary.tsx'
@@ -12,5 +13,6 @@ createRoot(document.getElementById('root')!).render(
         <App />
       </SafeProvider>
     </ErrorBoundary>
+    <Analytics />
   </StrictMode>,
 )
