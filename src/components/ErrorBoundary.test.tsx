@@ -8,7 +8,7 @@ beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
-function ThrowingChild({ message }: { message: string }) {
+function ThrowingChild({ message }: { message: string }): never {
   throw new Error(message)
 }
 
@@ -39,7 +39,7 @@ describe('ErrorBoundary', () => {
   })
 
   it('shows default message when error has no message', () => {
-    function ThrowEmpty() {
+    function ThrowEmpty(): never {
       throw new Error('')
     }
     render(

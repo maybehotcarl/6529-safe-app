@@ -12,6 +12,12 @@ const VALID_DELEGATION = {
   token_id: 0,
 }
 
+function omitDelegationField(key: keyof typeof VALID_DELEGATION) {
+  return Object.fromEntries(
+    Object.entries(VALID_DELEGATION).filter(([field]) => field !== key),
+  )
+}
+
 describe('isDelegation', () => {
   it('accepts a valid delegation object', () => {
     expect(isDelegation(VALID_DELEGATION)).toBe(true)
@@ -38,43 +44,35 @@ describe('isDelegation', () => {
   })
 
   it('rejects when block is missing', () => {
-    const { block: _, ...rest } = VALID_DELEGATION
-    expect(isDelegation(rest)).toBe(false)
+    expect(isDelegation(omitDelegationField('block'))).toBe(false)
   })
 
   it('rejects when from_address is missing', () => {
-    const { from_address: _, ...rest } = VALID_DELEGATION
-    expect(isDelegation(rest)).toBe(false)
+    expect(isDelegation(omitDelegationField('from_address'))).toBe(false)
   })
 
   it('rejects when to_address is missing', () => {
-    const { to_address: _, ...rest } = VALID_DELEGATION
-    expect(isDelegation(rest)).toBe(false)
+    expect(isDelegation(omitDelegationField('to_address'))).toBe(false)
   })
 
   it('rejects when collection is missing', () => {
-    const { collection: _, ...rest } = VALID_DELEGATION
-    expect(isDelegation(rest)).toBe(false)
+    expect(isDelegation(omitDelegationField('collection'))).toBe(false)
   })
 
   it('rejects when use_case is missing', () => {
-    const { use_case: _, ...rest } = VALID_DELEGATION
-    expect(isDelegation(rest)).toBe(false)
+    expect(isDelegation(omitDelegationField('use_case'))).toBe(false)
   })
 
   it('rejects when expiry is missing', () => {
-    const { expiry: _, ...rest } = VALID_DELEGATION
-    expect(isDelegation(rest)).toBe(false)
+    expect(isDelegation(omitDelegationField('expiry'))).toBe(false)
   })
 
   it('rejects when all_tokens is missing', () => {
-    const { all_tokens: _, ...rest } = VALID_DELEGATION
-    expect(isDelegation(rest)).toBe(false)
+    expect(isDelegation(omitDelegationField('all_tokens'))).toBe(false)
   })
 
   it('rejects when token_id is missing', () => {
-    const { token_id: _, ...rest } = VALID_DELEGATION
-    expect(isDelegation(rest)).toBe(false)
+    expect(isDelegation(omitDelegationField('token_id'))).toBe(false)
   })
 
   it('rejects when block is a string', () => {
