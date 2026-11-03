@@ -156,7 +156,7 @@ export default function ConsolidationCard({ onDelegationChange }: Props) {
     <div className="p-4 bg-gray-900 rounded-lg border border-gray-700 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold uppercase tracking-wider text-gray-300">
-          Wallet Consolidation
+          Wallet Consolidation (999)
         </h3>
         <button
           onClick={refresh}

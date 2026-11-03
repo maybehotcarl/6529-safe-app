@@ -110,7 +110,7 @@ export default function DelegationManagerCard({ onDelegationChange }: Props) {
     <div className="p-4 bg-gray-900 rounded-lg border border-gray-700 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold uppercase tracking-wider text-gray-300">
-          Delegation Manager
+          Delegation Manager (998)
         </h3>
         <button
           onClick={refresh}
